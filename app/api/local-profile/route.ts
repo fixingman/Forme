@@ -1,15 +1,18 @@
 import {openStore} from '@/lib/server/store.mjs';
 import {localAccess} from '@/lib/server/local-access';
+import {guardCollection} from '@/lib/server/session';
 import {parseBackup} from '@/lib/settings-backup';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'no-store'};
 export async function GET(request:Request){
  if(!localAccess(request))return Response.json({error:'Local storage is available only on this computer.'},{status:403,headers});
+ {const denied=await guardCollection(request);if(denied)return denied;}
  const store=openStore();try{return Response.json(store.profile(),{headers});}finally{store.close();}
 }
 export async function PUT(request:Request){
  if(!localAccess(request)||request.headers.get('content-type')!=='application/json')return Response.json({error:'Local JSON requests only.'},{status:403,headers});
+ {const denied=await guardCollection(request);if(denied)return denied;}
  try{
   // Bound streamed input as well as declared Content-Length.
   const reader=request.body?.getReader();if(!reader)throw new Error('Missing profile');

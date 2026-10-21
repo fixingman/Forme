@@ -5,7 +5,9 @@ A mobile-first Next.js app built from `docs/prototype/forme-prototype.html`, wit
 ## Project layout
 
 ```
-app/                 Next.js routes and API handlers (app/api/*)
+app/                 Next.js routes: (app) = the signed-in shell, (auth)/login, auth/* handlers, api/*
+proxy.ts             Session refresh and signed-out redirects (only when sign-in is enforced)
+supabase/migrations/ Postgres schema with row-level security (invite list, profiles, listings)
 components/          React UI
 lib/                 Client/shared TypeScript: preferences, catalog, navigation, backups of settings
   domain/            Framework-free logic (.mjs): trust rules, classification, sizes, gender,
@@ -51,7 +53,7 @@ See [data trust and audit](docs/data-trust.md) and [core experience notes](docs/
 
 ## Operations
 
-`npm run worker` runs the collection worker; `npm run backup`, `npm run backup:drill` and `npm run restore` handle backups; `npm run data:coverage` reports field coverage; `npm run env:check` and `npm run check:secrets` check configuration. See [release basics](docs/release.md) and [data quality](docs/data-quality.md).
+`npm run publish` sends your listings to Supabase (owner's computer only). `npm run worker` runs the collection worker; `npm run backup`, `npm run backup:drill` and `npm run restore` handle backups; `npm run data:coverage` reports field coverage; `npm run env:check` and `npm run check:secrets` check configuration. See [accounts and hosted data](docs/accounts-setup.md), [release basics](docs/release.md) and [data quality](docs/data-quality.md).
 
 ## Getting data
 

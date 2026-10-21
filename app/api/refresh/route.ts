@@ -1,16 +1,19 @@
 import {refreshControl} from '@/lib/server/refresh-control.mjs';
 import {drainQueue} from '@/lib/server/job-worker.mjs';
 import {localAccess} from '@/lib/server/local-access';
+import {guardCollection} from '@/lib/server/session';
 import {parseBackup} from '@/lib/settings-backup';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'no-store'};
 export async function GET(request:Request){
  if(!localAccess(request))return Response.json({error:'Refresh is available only on this computer.'},{status:403,headers});
+ {const denied=await guardCollection(request);if(denied)return denied;}
  const control=refreshControl();try{return Response.json(await control.status(),{headers});}finally{control.close();}
 }
 export async function POST(request:Request){
  if(!localAccess(request)||request.headers.get('content-type')!=='application/json')return Response.json({error:'Local JSON requests only.'},{status:403,headers});
+ {const denied=await guardCollection(request);if(denied)return denied;}
  const control=refreshControl();
  try{
   const reader=request.body?.getReader();if(!reader)throw new Error('Missing request');let length=0;const chunks:Uint8Array[]=[];

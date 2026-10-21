@@ -34,3 +34,13 @@
 .department-chip:has(input:checked) svg{display:inline-block}
 .department-chip:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .global-filter-form #departments>.small{font-size:12px}
+.auth-page{min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--paper)}
+.auth-card{width:min(100%,380px);display:flex;flex-direction:column;gap:16px}
+.auth-brand{margin:0;font-size:22px;letter-spacing:.22em}
+.auth-lede{margin:0;color:var(--muted)}
+.auth-form{display:flex;flex-direction:column;gap:14px}
+.auth-card .btn{width:100%;min-height:46px;text-decoration:none}
+.auth-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;border-top:1px solid var(--line)}
+.auth-signout{text-align:center}
+

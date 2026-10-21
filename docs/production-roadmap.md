@@ -17,6 +17,8 @@ Real provider collection, normalized public listings, explicit cost previews, a 
 
 ## Milestone 1: a deployed personal beta
 
+Status 22 October 2026: implemented in the repository for a single owner ([setup guide](accounts-setup.md)): passwordless email link and Google sign-in through Supabase, an invite table enforced by Postgres row-level security (tested in a real Postgres engine), per-account preference and saved-item sync with revision checks, listings published to Postgres from the owner's computer, and collection kept owner-only by never running it hosted. **Not yet exercised against a real Supabase project or a Vercel deployment**; that needs your accounts. Automatic job running in the cloud (Milestone 2) is still open.
+
 Use hosted Postgres and authenticated profiles. Migrate shared listings, observations, per-user brands/styles/sizes/departments/searches, saves/dismissals, jobs and budgets into versioned schemas. Preserve source keys and timestamps; migrate existing backups with a visible preview. Make preference sync automatic, with localStorage as a cache, conflict handling and export remaining available.
 
 Start invite-only, even if the only invited user is Can. Keep paid collection and budget changes restricted to an owner/admin role. Protect every server read/write, rather than relying on a local Host check. Keep provider secrets server-side; rotate the credentials previously shared in chat before a wider release.

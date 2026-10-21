@@ -45,7 +45,7 @@ test('log lines are JSON, redact sensitive fields at any depth and truncate larg
  assert.ok(line.message.length<=501);assert.equal(line.error,'boom');assert.ok(!Number.isNaN(Date.parse(line.at)));
 });
 test('environment checks flag exposed secrets and weak tokens, and report presence without values',()=>{
- const ok=checkEnv({SCRAPEBADGER_API_KEY:'k'.repeat(20)});assert.equal(ok.ok,true);assert.deepEqual(ok.present,{SCRAPEBADGER_API_KEY:true,BRIGHTDATA_API_KEY:false,GOOGLE_TRANSLATE_API_KEY:false,HEALTH_TOKEN:false});assert.equal(JSON.stringify(ok).includes('kkkk'),false);
+ const ok=checkEnv({SCRAPEBADGER_API_KEY:'k'.repeat(20)});assert.equal(ok.ok,true);assert.deepEqual(ok.present,{SCRAPEBADGER_API_KEY:true,BRIGHTDATA_API_KEY:false,GOOGLE_TRANSLATE_API_KEY:false,HEALTH_TOKEN:false,SUPABASE_SERVICE_ROLE_KEY:false});assert.equal(JSON.stringify(ok).includes('kkkk'),false);
  assert.match(checkEnv({NEXT_PUBLIC_SCRAPEBADGER_API_KEY:'x'}).errors[0],/exposed to every visitor/);
  assert.match(checkEnv({HEALTH_TOKEN:'short'}).errors[0],/shorter than 16/);
  assert.match(checkEnv({}).warnings[0],/collection and availability checks are disabled/);
@@ -66,4 +66,24 @@ test('health and the queue migration tolerate a refresh database created before 
   try{assert.equal((await control.status()).runs[0].id,'old');assert.deepEqual(control.recover(),[]);}finally{control.close();}
   const migrated=new DatabaseSync(join(dir,'.forme-data/refresh.sqlite'),{readOnly:true});assert.ok(migrated.prepare('PRAGMA table_info(runs)').all().some(column=>column.name==='heartbeat_at'));migrated.close();
  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('hosted environments must not hold owner-only keys, and Supabase keys must be the right kind',()=>{
+ const supa={NEXT_PUBLIC_SUPABASE_URL:'https://x.supabase.co',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_abc'};
+ assert.equal(checkEnv({...supa,SUPABASE_SERVICE_ROLE_KEY:'k'.repeat(30),SCRAPEBADGER_API_KEY:'k'.repeat(20)}).ok,true,'fine on the owner\'s computer');
+ for(const flag of [{VERCEL:'1'},{NETLIFY:'true'},{FORME_REQUIRE_AUTH:'1'}]){
+  const result=checkEnv({...supa,...flag,SUPABASE_SERVICE_ROLE_KEY:'k'.repeat(30),SCRAPEBADGER_API_KEY:'k'.repeat(20),BRIGHTDATA_API_KEY:'k'.repeat(20)});
+  assert.equal(result.ok,false,JSON.stringify(flag));assert.equal(result.errors.filter(e=>/must not be set on a hosted/.test(e)).length,3);assert.equal(JSON.stringify(result).includes('kkkkkkkk'),false);
+ }
+ assert.match(checkEnv({NEXT_PUBLIC_SUPABASE_URL:'https://x.supabase.co'}).errors[0],/both/);
+ assert.match(checkEnv({...supa,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_secret_'+'a'.repeat(20)}).errors.join(),/holds a secret key/);
+ const payload=Buffer.from(JSON.stringify({role:'service_role'})).toString('base64url');
+ assert.match(checkEnv({...supa,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:`eyJhbGciOiJIUzI1NiJ9.${payload}.sig_sig_sig`}).errors.join(),/service-role key/);
+ assert.match(checkEnv(supa).warnings.join(),/FORME_REQUIRE_AUTH=1/);assert.equal(checkEnv({...supa,VERCEL:'1',HEALTH_TOKEN:'t'.repeat(20)}).ok,true);
+});
+test('the scanner recognises Supabase secret and service-role keys without echoing them',()=>{
+ const secret='sb_secret_'+'A1b2C3d4E5f6G7h8I9j0',jwt=['eyJhbGciOiJIUzI1NiIsInR5cCI','eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UifQ','abcdefghijklmnopqrstuvwxyz0123'].join('.');
+ const hits=scanText(`ok\n${secret}\nSUPABASE_SERVICE_ROLE_KEY=${jwt}\nsomething ${jwt}`);
+ assert.deepEqual(hits.map(h=>[h.line,h.rule]),[[2,'supabase-secret-key'],[3,'supabase-service-role-assignment'],[4,'jwt-like-token']]);
+ assert.equal(JSON.stringify(hits).includes('A1b2C3d4'),false);
+ assert.deepEqual(scanText('SUPABASE_SERVICE_ROLE_KEY=\nSUPABASE_SERVICE_ROLE_KEY=<service key>\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_abcdefghijklmnop'),[]);
 });

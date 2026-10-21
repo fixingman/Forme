@@ -47,6 +47,7 @@ Starting a refresh now reserves its budget and returns immediately; a worker run
 - Provider keys are read only on the server from environment variables. Locally they live in `.env.local` (git-ignored). `npm run env:check` reports which are set, never their values, and fails on unsafe setups (for example a secret with a `NEXT_PUBLIC_` prefix, which would ship it to every browser).
 - `npm run check:secrets` (also in CI) scans tracked files for provider keys and private keys and prints file and line only.
 - In any hosted environment set secrets in the host's encrypted environment settings, never in the repository, and use separate keys per environment.
+- Hosted environments must not hold owner-only keys: `npm run env:check` errors if `SUPABASE_SERVICE_ROLE_KEY` or a provider key is set where `VERCEL`/`NETLIFY`/`FORME_REQUIRE_AUTH` is present. See [accounts setup](accounts-setup.md).
 - **Rotate the Bright Data and ScrapeBadger keys that were pasted into the original Codex chat.** They remain exposed in that transcript regardless of this repository being clean. The repository and its git history contain neither.
 
 Rotation steps: create the new key at the provider, update `.env.local` (or the host's secret), run `npm run env:check`, run a free account call or a 1-search preview to confirm, then revoke the old key.
