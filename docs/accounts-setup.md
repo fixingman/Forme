@@ -71,6 +71,14 @@ On Vercel (import the GitHub repo), set **only** `NEXT_PUBLIC_SUPABASE_URL`, `NE
 ### 8. Publish your listings
 `npm run publish` sends `public/data/vinted.json` (after validation) to Postgres. It refuses an empty snapshot or a sudden large shrink unless you add `--force`. Run it after each collection.
 
+## Check the setup with one command
+
+`npm run auth:check` makes read-only requests with the **publishable** key only and tells you, in plain words, whether: the project is reachable, public sign-up is off, email (and Google) sign-in are enabled, the four tables and `save_profile` exist, and a signed-out visitor is refused on all of them. It prints no keys and changes nothing.
+
+`npm run auth:check -- --owner` additionally reads your invite list and user list with the service-role key from your own `.env.local`, and checks that an owner is invited, every invited address has a Supabase user, and no uninvited user exists. It reads only.
+
+This proves the dashboard and database settings. It cannot prove that an email arrives or that Google's consent screen works; that is step 1–5 below.
+
 ## Checking it works
 
 1. Open the Vercel address signed out: you land on the login page.

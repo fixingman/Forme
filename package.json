@@ -22,7 +22,8 @@
     "test:unit": "node --test tests/unit/*.test.mjs",
     "check:secrets": "node scripts/ops/check-secrets.mjs",
     "env:check": "node scripts/ops/check-env.mjs",
-    "publish": "node scripts/ops/publish-snapshot.mjs"
+    "publish": "node scripts/ops/publish-snapshot.mjs",
+    "auth:check": "node scripts/ops/check-supabase.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
