@@ -1,4 +1,5 @@
 import {refreshControl} from '@/lib/server/refresh-control.mjs';
+import {drainQueue} from '@/lib/server/job-worker.mjs';
 import {localAccess} from '@/lib/server/local-access';
 import {parseBackup} from '@/lib/settings-backup';
 export const runtime='nodejs';
@@ -21,7 +22,9 @@ export async function POST(request:Request){
   const {settings}=parseBackup(raw.profile);
   if(raw.action==='plan')return Response.json(await control.plan(settings,{scope:raw.scope,limit:raw.limit}),{headers});
   if(typeof raw.id!=='string'||raw.id.length>100)throw new Error('Invalid plan ID.');
-  return Response.json(await control.run(raw.id,settings),{headers});
+  const queued=await control.enqueue(raw.id,settings);
+  if(queued.status==='queued')void drainQueue();
+  return Response.json(queued,{status:queued.status==='queued'?202:200,headers});
  }catch(error){return Response.json({error:error instanceof Error?error.message:'Refresh failed.'},{status:400,headers});}
  finally{control.close();}
 }

@@ -1,0 +1,10 @@
+{
+ "note": "FORME editorial reference used only to suggest a style. It is a taste label, not a marketplace fact, and is always shown as inferred. Each brand maps to at most one of the built-in styles.",
+ "reviewedAt": "2026-10-21",
+ "styles": {
+  "Japanese Designers": ["Yohji Yamamoto","Y-3","Comme des Garçons","Comme des Garçons Homme Plus","Issey Miyake","Homme Plissé Issey Miyake","Kapital","Visvim","Sacai","Undercover","Junya Watanabe","Neighborhood","Needles","Nanamica","Auralee","Wacko Maria","Comoli","Hender Scheme","Kolor","Mastermind Japan","Sophnet","Evisu"],
+  "Minimalism": ["COS","Arket","Lemaire","Jil Sander","The Row","Studio Nicholson","Margaret Howell","A.P.C.","Our Legacy","Toteme","Filippa K","Norse Projects","Han Kjøbenhavn"],
+  "Workwear": ["Carhartt","Carhartt WIP","Dickies","Engineered Garments","Filson","Orslow","Nigel Cabourn","Universal Works","Red Wing"],
+  "Techwear": ["Arc'teryx","Arc'teryx Veilance","Veilance","Salomon","Acronym","Nike ACG","And Wander","Goldwin"]
+ }
+}

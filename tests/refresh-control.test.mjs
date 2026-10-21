@@ -53,3 +53,47 @@ test('unexpected reported charges also consume the cap and stop further calls',a
  const status=await control.status();assert.equal(status.reportedCredits,25);assert.equal(status.reservedCredits,5);assert.equal(status.remainingCredits,0);
  }finally{control.close();await rm(root,{recursive:true,force:true});}
 });
+const providerReply=id=>Response.json({items:[{id,title:'Auralee cotton shirt',brand_title:'Auralee',size_title:'M',price:{amount:'100',currency_code:'SEK'},url:`https://www.vinted.se/items/${id}-shirt`,photo:{url:'https://images1.vinted.net/test.webp'}}]},{headers:{'x-credits-used':'5'}});
+test('enqueue reserves the budget, sends nothing, is idempotent and the worker runs it exactly once',async()=>{
+ let calls=0;const {root,control}=await setup(async()=>{calls++;return providerReply(91001);});try{
+ const plan=await control.plan(settings,{scope:'discover',limit:1});
+ const queued=await control.enqueue(plan.id,settings);assert.equal(queued.status,'queued');assert.equal(calls,0);
+ let status=await control.status();assert.equal(status.reservedCredits,5);assert.equal(status.running,true);assert.equal(status.remainingCredits,10);
+ assert.equal((await control.enqueue(plan.id,settings)).status,'queued');assert.equal(status.reservedCredits,5);
+ const done=await control.work();assert.equal(done.status,'complete');assert.equal(done.accepted,1);assert.equal(calls,1);
+ assert.equal((await control.work()).status,'idle');assert.equal(calls,1);
+ status=await control.status();assert.equal(status.running,false);assert.equal(status.reportedCredits,5);
+ assert.equal((await control.enqueue(plan.id,settings)).status,'complete');assert.equal(calls,1);
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});
+test('only one worker runs at a time and a second plan cannot be queued over an active one',async()=>{
+ let release;const gate=new Promise(resolve=>{release=resolve;});let calls=0;
+ const {root,control}=await setup(async()=>{calls++;await gate;return providerReply(91002);});try{
+ const plan=await control.plan(settings,{scope:'discover',limit:1});await control.enqueue(plan.id,settings);
+ const first=control.work({workerId:'a'});await new Promise(resolve=>setTimeout(resolve,50));
+ assert.equal((await control.work({workerId:'b'})).status,'busy');
+ const second=await control.plan(settings,{scope:'discover',limit:1});await assert.rejects(control.enqueue(second.id,settings),/Another refresh is running/);
+ release();assert.equal((await first).status,'complete');assert.equal(calls,1);
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});
+test('a worker that stops heartbeating is marked interrupted, keeps its reservation and is never retried',async()=>{
+ let calls=0;const {root,control}=await setup(async()=>{calls++;return providerReply(91003);});try{
+ const plan=await control.plan(settings,{scope:'discover',limit:1});await control.enqueue(plan.id,settings);
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(join(root,'.forme-data/refresh.sqlite'));
+ db.prepare("UPDATE runs SET status='running',worker_id='dead',heartbeat_at=? WHERE id=?").run(new Date(Date.now()-10*60000).toISOString(),plan.id);db.close();
+ await writeFile(join(root,'.forme-data/refresh.lock'),JSON.stringify({pid:2147483646,workerId:'dead'}));
+ assert.equal(control.recover({staleMs:5*60000}).length,1);
+ const status=await control.status();assert.equal(status.running,false);assert.equal(status.reservedCredits,5);assert.equal(status.remainingCredits,10);
+ assert.equal(status.runs[0].status,'interrupted');assert.match(status.runs[0].result.error,/worker stopped/);
+ assert.equal((await control.work()).status,'idle');assert.equal(calls,0);
+ assert.equal(control.recover().length,0);
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});
+test('recovery leaves a live worker alone',async()=>{
+ const {root,control}=await setup(async()=>providerReply(91004));try{
+ const plan=await control.plan(settings,{scope:'discover',limit:1});await control.enqueue(plan.id,settings);
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(join(root,'.forme-data/refresh.sqlite'));
+ db.prepare("UPDATE runs SET status='running',worker_id='live',heartbeat_at=? WHERE id=?").run(new Date().toISOString(),plan.id);db.close();
+ assert.equal(control.recover().length,0);assert.equal((await control.status()).running,true);
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});

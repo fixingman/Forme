@@ -12,7 +12,8 @@
     "data:translate": "node scripts/translate-listings.mjs",
     "data:import": "node scripts/import-database.mjs",
     "data:discovery-plan": "node scripts/discovery-plan.mjs",
-    "data:discover": "node scripts/collect-discover.mjs"
+    "data:discover": "node scripts/collect-discover.mjs",
+    "worker": "node scripts/worker.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.59.0",

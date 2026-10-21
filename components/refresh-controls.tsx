@@ -6,12 +6,13 @@ type Run={id:string;status:string;reserved:number;reported:number;created_at:str
 type Status={day:string;dailyCap:number;reservedCredits:number;reportedCredits:number;remainingCredits:number;providerAvailable:boolean;running:boolean;runs:Run[]};
 type Plan={id:string;maximumCredits:number;maximumItems:number;exactBrandJobs:number;department:string;sizeFiltering:string;translation:string;coverage:string;expiresAt:string;jobs:{brand:string;brandId:string|null}[]};
 export default function RefreshControls({settings,refreshed}:{settings:Preferences;refreshed:()=>Promise<void>}){
- const [status,setStatus]=useState<Status|null>(null),[cap,setCap]=useState(15),[scope,setScope]=useState('discover'),[limit,setLimit]=useState(3),[plan,setPlan]=useState<Plan|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const [status,setStatus]=useState<Status|null>(null),[cap,setCap]=useState(15),[scope,setScope]=useState('discover'),[limit,setLimit]=useState(3),[plan,setPlan]=useState<Plan|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[watching,setWatching]=useState<string|null>(null);
  const fingerprint=JSON.stringify(settings);
  async function load(){try{const response=await fetch('/api/refresh',{cache:'no-store'});if(!response.ok)throw new Error('Refresh controls are unavailable. Your existing collection is still available.');const value:Status=await response.json();setStatus(value);return value;}catch(error){setMessage((error as Error).message);return null;}}
  useEffect(()=>{void load().then(value=>{if(value)setCap(value.dailyCap);});},[]);
  useEffect(()=>{setPlan(null);},[fingerprint,scope,limit]);
  useEffect(()=>{if(!busy&&!status?.running)return;const timer=setInterval(()=>void load(),3000);return()=>clearInterval(timer);},[busy,status?.running]);
+ useEffect(()=>{if(!watching||!status)return;const run=status.runs.find(row=>row.id===watching);if(!run||['queued','running'].includes(run.status))return;setWatching(null);if(run.status==='complete'){setMessage(`Refresh complete: ${run.result?.accepted??0} validated listings, ${run.result?.eligible??0} eligible Discover results.${run.result?.pendingTranslations?` ${run.result.pendingTranslations} titles still need English review.`:''}`);void refreshed();}else setMessage(run.result?.error??'The refresh did not complete. Preview a new plan before trying again.');},[watching,status]);
  async function action(action:'budget'|'plan'|'run'){
   setBusy(true);setMessage('');
   try{
@@ -19,6 +20,7 @@ export default function RefreshControls({settings,refreshed}:{settings:Preferenc
    const value=await response.json();if(!response.ok)throw new Error(value.error??'Refresh failed.');
    if(action==='budget'){setStatus(value);setMessage('Daily cap saved. No collection started.');}
    if(action==='plan'){setPlan(value);await load();setMessage('Plan ready. No provider requests sent.');}
+   if(action==='run'&&['queued','running'].includes(value.status)){setWatching(value.id);setPlan(null);setMessage('Refresh started in the background. You can leave this page; progress updates here.');await load();return;}
    if(action==='run'){if(value.status!=='complete')throw new Error(value.error??'The previous run did not complete. Preview a new plan before trying again.');setMessage(`Refresh complete: ${value.accepted} validated listings, ${scope==='following'?`${value.matchingPreferences} matches for your feeds`:`${value.eligible} eligible Discover results`}.${value.pendingTranslations?` ${value.pendingTranslations} titles still need English review.`:''}`);setPlan(null);await refreshed();}
   }catch(error){setMessage((error as Error).message);}finally{if(action==='run')await load();setBusy(false);}
  }

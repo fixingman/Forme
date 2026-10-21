@@ -35,3 +35,27 @@ test('refresh controls fit a mobile viewport',async({page})=>{
  await page.route('**/api/refresh',route=>route.fulfill({json:initial}));await page.setViewportSize({width:390,height:844});await page.goto('/tools');await expect(page.getByRole('heading',{name:'Refresh listings'})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+test('a queued refresh runs in the background, the page follows progress and a failed run explains itself',async({page})=>{
+ let phase:'idle'|'running'|'complete'|'interrupted'='idle';
+ const runs=()=>phase==='idle'?[]:[{id:'quote',status:phase,reserved:5,reported:phase==='running'?0:5,created_at:new Date().toISOString(),result:phase==='complete'?{accepted:2,eligible:1,pendingTranslations:0}:phase==='interrupted'?{error:'The collection worker stopped before finishing. Credits stay reserved.'}:null}];
+ await page.route('**/api/refresh',async route=>{
+  if(route.request().method()==='GET')return route.fulfill({json:{...initial,dailyCap:30,remainingCredits:25,running:phase==='running',runs:runs()}});
+  const value=route.request().postDataJSON();
+  if(value.action==='plan')return route.fulfill({json:{id:'quote',maximumCredits:5,maximumItems:20,exactBrandJobs:1,department:'Men’s catalog',sizeFiltering:'Local sizes.',translation:'Cached translations.',coverage:'Clothing only.',expiresAt:new Date(Date.now()+600000).toISOString(),jobs:[{brand:'Auralee',brandId:'2053426'}]}});
+  phase='running';return route.fulfill({status:202,json:{id:'quote',status:'queued'}});
+ });
+ await page.goto('/tools');await page.getByRole('button',{name:'Preview refresh · free'}).click();await page.getByRole('button',{name:'Run refresh · up to 5 credits'}).click();
+ await expect(page.getByText('Refresh started in the background',{exact:false})).toBeVisible();
+ phase='complete';await expect(page.getByText('Refresh complete: 2 validated listings',{exact:false})).toBeVisible({timeout:10000});
+});
+test('an interrupted background refresh is reported with its reason',async({page})=>{
+ let started=false;
+ await page.route('**/api/refresh',async route=>{
+  if(route.request().method()==='GET')return route.fulfill({json:{...initial,dailyCap:30,remainingCredits:25,running:false,runs:started?[{id:'quote',status:'interrupted',reserved:5,reported:0,created_at:new Date().toISOString(),result:{error:'The collection worker stopped before finishing. Credits stay reserved.'}}]:[]}});
+  const value=route.request().postDataJSON();
+  if(value.action==='plan')return route.fulfill({json:{id:'quote',maximumCredits:5,maximumItems:20,exactBrandJobs:1,department:'Men’s catalog',sizeFiltering:'Local sizes.',translation:'Cached translations.',coverage:'Clothing only.',expiresAt:new Date(Date.now()+600000).toISOString(),jobs:[{brand:'Auralee',brandId:'2053426'}]}});
+  started=true;return route.fulfill({status:202,json:{id:'quote',status:'queued'}});
+ });
+ await page.goto('/tools');await page.getByRole('button',{name:'Preview refresh · free'}).click();await page.getByRole('button',{name:'Run refresh · up to 5 credits'}).click();
+ await expect(page.getByText('The collection worker stopped before finishing',{exact:false}).first()).toBeVisible({timeout:10000});
+});

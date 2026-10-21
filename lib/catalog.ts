@@ -255,13 +255,14 @@ export const items = [
   }
 ];
 export type Listing = typeof items[number] & {
-  availability?:'unknown'|'sold'|'reserved'|'unavailable';availabilitySource?:'provider'|'unknown';availabilityObservedAt?:string;brandId?:string;brandSource?:string;
+  availability?:'unknown'|'available'|'sold'|'reserved'|'unavailable';availabilitySource?:'provider'|'unknown';availabilityObservedAt?:string;brandId?:string;brandSource?:string;
   source?: 'vinted' | 'tradera' | 'blocket'; sourceId?: string; sourceKey?: string;
   gender?:'men'|'women'|'unisex'|'unknown';genderSource?:'provider'|'title'|'search-filter'|'unknown';collectionCatalogIds?:string;
   previousPrice?:number;priceChangedAt?:string;newlyCollected?:boolean;observedAt?:string;
   originalTitle?: string; originalCondition?: string; titleTranslation?: string;
   currency?: string; condition?: string; sourceUrl?: string; fetchedAt?: string;
   firstSeenAt?: string; imageUrl?: string;
+  styleSource?:'title'|'brand-reference'|'unknown';styleEvidence?:string;collectibleSignals?:string[];
 };
 export const defaults = {
   "following": [
