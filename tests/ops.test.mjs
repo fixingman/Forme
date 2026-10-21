@@ -58,3 +58,12 @@ test('the secret scanner finds provider keys by rule and line only, and ignores 
  assert.equal(JSON.stringify(hits).includes(live),false);
  assert.deepEqual(scanText('SCRAPEBADGER_API_KEY=\nBRIGHTDATA_API_KEY=<your key>\nGOOGLE_TRANSLATE_API_KEY=$GOOGLE\nid: '+uuid),[]);
 });
+test('health and the queue migration tolerate a refresh database created before heartbeats existed',async()=>{
+ const dir=await root();try{
+  const legacy=new DatabaseSync(join(dir,'.forme-data/refresh.sqlite'));legacy.exec("DROP TABLE runs;CREATE TABLE config(id INTEGER PRIMARY KEY,cap INTEGER NOT NULL);INSERT INTO config VALUES(1,15);CREATE TABLE runs(id TEXT PRIMARY KEY,day TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,reserved INTEGER NOT NULL DEFAULT 0,reported REAL NOT NULL DEFAULT 0,payload TEXT NOT NULL,result TEXT);INSERT INTO runs(id,day,status,created_at,reserved,reported,payload) VALUES ('old','2026-10-20','complete','2026-10-20T10:00:00Z',5,5,'{}');");legacy.close();
+  assert.notEqual(healthReport({root:dir,now,env:{}}).checks.queue.status,'down');
+  const {refreshControl}=await import('../lib/server/refresh-control.mjs');const control=refreshControl({root:dir,apiKey:'x'});
+  try{assert.equal((await control.status()).runs[0].id,'old');assert.deepEqual(control.recover(),[]);}finally{control.close();}
+  const migrated=new DatabaseSync(join(dir,'.forme-data/refresh.sqlite'),{readOnly:true});assert.ok(migrated.prepare('PRAGMA table_info(runs)').all().some(column=>column.name==='heartbeat_at'));migrated.close();
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
