@@ -2,6 +2,10 @@
 
 A mobile-first Next.js app built from `docs/prototype/forme-prototype.html`, with the original warm neutral palette, dark green navigation, and sample catalog. The original HTML remains untouched.
 
+## Project memory
+
+New contributors and agents should start with [AGENTS.md](AGENTS.md), [current project state](docs/project-state.md), and [decisions and rules](docs/decisions.md). These distinguish implemented code, approved direction and pending real-service setup. Keep them current when decisions or milestones change; private machine notes stay in ignored `.context/`.
+
 ## Project layout
 
 ```
