@@ -1,6 +1,6 @@
 # FORME project state
 
-Last reviewed: 22 October 2026, against commit `2088962` plus the documentation-only memory changes. This page summarizes inspected code and dated reports; it does not certify a deployment or current runtime health.
+Last reviewed: 22 October 2026, against commit `dd83747` plus the badge/translation audit notes. This page summarizes inspected code and dated reports; it does not certify a deployment or current runtime health.
 
 ## Read first
 
@@ -30,6 +30,11 @@ Hosted listings are a published snapshot, not a hosted replacement for the colle
 
 ## Next work and unresolved choices
 
+Audit findings, 22 October: card `isNew` currently requires a post-baseline listing first seen on the browser's current calendar day, while Home arrivals use a rolling seven-day window. SQLite derives `newlyCollected`; the JSON fallback and owner publishing path do not reconstruct it when absent. Align these paths and the intended badge window before treating badge absence as proof that a listing is old. A temporary-database check reproduced the day-window mismatch and missing-flag behavior; the 13 targeted home-activity, normalization and data-trust tests passed.
+
+Translation-pending currently means an exact-title cache entry is missing, even for already-English text; no language check is made. Cached titles and condition mappings require no translation request. Google is contacted only by the explicit `--google` command, separately from collection; whether a request incurs a charge depends on account usage/allowance, so do not describe all translation runs as necessarily paid.
+
+0. **22 October, user-reported, unverified:** the Supabase project is connected to this branch. No project URL, key or integration was visible to the assistant, so none of the items below is confirmed. `npm run auth:check` (and `-- --owner`) is the read-only way to confirm the migration, sign-up setting, table privacy and invite list once the public URL/key are in `.env.local`.
 1. Complete real Supabase setup: apply the migration, configure the owner's invite/account, disable public signup, set redirect URLs and the email template. Email-link and Google code paths exist; enabling Google requires separate provider setup.
 2. Validate real sign-in/sign-out, uninvited denial, row isolation, first-sync preservation, revision conflicts and desktop/mobile sync. Local stand-ins do not prove dashboard configuration or cross-device email behavior.
 3. Confirm hosting and provision the app only within the requested deployment scope. Vercel is documented; no live deployment is established by this memory. Keep collection and private keys on the owner's computer and publish deliberately.
@@ -44,7 +49,7 @@ The [production roadmap](production-roadmap.md) and [core experience notes](core
 
 For operations and data behavior, use [release notes](release.md), [data trust](data-trust.md), [data quality](data-quality.md) and [refresh controls](refresh-and-feedback.md). The older refresh document says crash recovery is absent; `lib/server/refresh-control.mjs` and the newer release notes show heartbeat-based interruption recovery. Preserve reservations and no-retry behavior.
 
-The attached historical session reports passing builds, typechecks, unit/browser suites and a successful local restore drill. Those results predate this memory update and some predate the account commit. Test counts are not an acceptance contract. This update checks documentation links, referenced commands, whitespace, secrets and private-file exclusion only; no application tests, provider calls or cloud setup are included.
+The attached historical session reports passing builds, typechecks, unit/browser suites and a successful local restore drill. Those results predate this memory update and some predate the account commit. Test counts are not an acceptance contract. Initial memory creation checked documentation links, referenced commands, whitespace, secrets and private-file exclusion. The subsequent badge/translation audit ran the targeted checks described above; it made no application changes, paid provider calls or cloud setup.
 
 Useful commands: `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm test`, and `npm run check:secrets`. See [AGENTS.md](../AGENTS.md#verification) for when to run them and the untracked-file scan caveat. Never use collection, translation, publishing or restore as a routine verification shortcut.
 
