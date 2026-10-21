@@ -1,0 +1,372 @@
+{
+  "provider": "scrapebadger",
+  "startedAt": "2026-10-19T09:05:13.391Z",
+  "requests": [
+    {
+      "query": "Our Legacy",
+      "status": 200,
+      "elapsedMs": 982,
+      "creditsUsed": "5",
+      "bodyKeys": [
+        "items",
+        "pagination",
+        "market",
+        "seller_country"
+      ],
+      "error": null,
+      "count": 10,
+      "market": "se",
+      "pagination": {
+        "current_page": 1,
+        "total_pages": 96,
+        "total_entries": 960,
+        "per_page": 10,
+        "time": 1792400714
+      },
+      "sample": [
+        {
+          "id": 10440300038,
+          "title": "Our legacy x Stüssy bandana",
+          "display_title": "Our Legacy",
+          "brand_title": "Our Legacy",
+          "size_title": null,
+          "status": "Mycket bra",
+          "price": {
+            "amount": "500.00",
+            "currency_code": "SEK"
+          },
+          "url": "https://www.vinted.se/items/10440300038-our-legacy-x-stussy-bandana",
+          "photoKeys": [
+            "id",
+            "url",
+            "dominant_color",
+            "is_main",
+            "width",
+            "height",
+            "full_size_url"
+          ],
+          "photosCount": 1,
+          "otherFieldNames": [
+            "display_subtitle",
+            "path",
+            "is_visible",
+            "promoted",
+            "favourite_count",
+            "view_count",
+            "service_fee",
+            "total_item_price",
+            "content_source",
+            "seller_country_code",
+            "similarity_score",
+            "user"
+          ]
+        },
+        {
+          "id": 10439393259,
+          "title": "Our Legacy Mazzy top",
+          "display_title": "Our Legacy",
+          "brand_title": "Our Legacy",
+          "size_title": "EU 42",
+          "status": "Mycket bra",
+          "price": {
+            "amount": "800.00",
+            "currency_code": "SEK"
+          },
+          "url": "https://www.vinted.se/items/10439393259-our-legacy-mazzy-top",
+          "photoKeys": [
+            "id",
+            "url",
+            "dominant_color",
+            "is_main",
+            "width",
+            "height",
+            "full_size_url"
+          ],
+          "photosCount": 1,
+          "otherFieldNames": [
+            "display_subtitle",
+            "path",
+            "is_visible",
+            "promoted",
+            "favourite_count",
+            "view_count",
+            "service_fee",
+            "total_item_price",
+            "content_source",
+            "seller_country_code",
+            "similarity_score",
+            "user"
+          ]
+        }
+      ],
+      "itemKeys": [
+        "id",
+        "title",
+        "price",
+        "brand_title",
+        "display_title",
+        "display_subtitle",
+        "size_title",
+        "status",
+        "url",
+        "path",
+        "is_visible",
+        "promoted",
+        "favourite_count",
+        "view_count",
+        "service_fee",
+        "total_item_price",
+        "content_source",
+        "seller_country_code",
+        "similarity_score",
+        "user",
+        "photo",
+        "photos"
+      ]
+    },
+    {
+      "query": "Acne Studios",
+      "status": 200,
+      "elapsedMs": 524,
+      "creditsUsed": "5",
+      "bodyKeys": [
+        "items",
+        "pagination",
+        "market",
+        "seller_country"
+      ],
+      "error": null,
+      "count": 10,
+      "market": "se",
+      "pagination": {
+        "current_page": 1,
+        "total_pages": 96,
+        "total_entries": 960,
+        "per_page": 10,
+        "time": 1792400714
+      },
+      "sample": [
+        {
+          "id": 10440248134,
+          "title": "Acne halsduk",
+          "display_title": "Acne Studios",
+          "brand_title": "Acne Studios",
+          "size_title": null,
+          "status": "Bra",
+          "price": {
+            "amount": "349.00",
+            "currency_code": "SEK"
+          },
+          "url": "https://www.vinted.se/items/10440248134-acne-halsduk",
+          "photoKeys": [
+            "id",
+            "url",
+            "dominant_color",
+            "is_main",
+            "width",
+            "height",
+            "full_size_url"
+          ],
+          "photosCount": 1,
+          "otherFieldNames": [
+            "display_subtitle",
+            "path",
+            "is_visible",
+            "promoted",
+            "favourite_count",
+            "view_count",
+            "service_fee",
+            "total_item_price",
+            "content_source",
+            "seller_country_code",
+            "similarity_score",
+            "user"
+          ]
+        },
+        {
+          "id": 10440107708,
+          "title": "Jeans",
+          "display_title": "Acne Studios",
+          "brand_title": "Acne Studios",
+          "size_title": "46 | W29",
+          "status": "Bra",
+          "price": {
+            "amount": "150.00",
+            "currency_code": "SEK"
+          },
+          "url": "https://www.vinted.se/items/10440107708-jeans",
+          "photoKeys": [
+            "id",
+            "url",
+            "dominant_color",
+            "is_main",
+            "width",
+            "height",
+            "full_size_url"
+          ],
+          "photosCount": 1,
+          "otherFieldNames": [
+            "display_subtitle",
+            "path",
+            "is_visible",
+            "promoted",
+            "favourite_count",
+            "view_count",
+            "service_fee",
+            "total_item_price",
+            "content_source",
+            "seller_country_code",
+            "similarity_score",
+            "user"
+          ]
+        }
+      ],
+      "itemKeys": [
+        "id",
+        "title",
+        "price",
+        "brand_title",
+        "display_title",
+        "display_subtitle",
+        "size_title",
+        "status",
+        "url",
+        "path",
+        "is_visible",
+        "promoted",
+        "favourite_count",
+        "view_count",
+        "service_fee",
+        "total_item_price",
+        "content_source",
+        "seller_country_code",
+        "similarity_score",
+        "user",
+        "photo",
+        "photos"
+      ]
+    },
+    {
+      "query": "leather jacket",
+      "status": 200,
+      "elapsedMs": 558,
+      "creditsUsed": "5",
+      "bodyKeys": [
+        "items",
+        "pagination",
+        "market",
+        "seller_country"
+      ],
+      "error": null,
+      "count": 10,
+      "market": "se",
+      "pagination": {
+        "current_page": 1,
+        "total_pages": 96,
+        "total_entries": 960,
+        "per_page": 10,
+        "time": 1792400715
+      },
+      "sample": [
+        {
+          "id": 10440282622,
+          "title": "Vintage Samsøe Samsøe Leather Jacket",
+          "display_title": "Samsøe Samsøe",
+          "brand_title": "Samsøe Samsøe",
+          "size_title": "XS",
+          "status": "Mycket bra",
+          "price": {
+            "amount": "301.38",
+            "currency_code": "SEK"
+          },
+          "url": "https://www.vinted.se/items/10440282622-vintage-samsoe-samsoe-leather-jacket",
+          "photoKeys": [
+            "id",
+            "url",
+            "dominant_color",
+            "is_main",
+            "width",
+            "height",
+            "full_size_url"
+          ],
+          "photosCount": 1,
+          "otherFieldNames": [
+            "display_subtitle",
+            "path",
+            "is_visible",
+            "promoted",
+            "favourite_count",
+            "view_count",
+            "service_fee",
+            "total_item_price",
+            "content_source",
+            "seller_country_code",
+            "similarity_score",
+            "user"
+          ]
+        },
+        {
+          "id": 10439391891,
+          "title": "Mango Cropped bomber real leather jacket rave y2k glamour japanese 90s biker",
+          "display_title": "Hysteric Glamour",
+          "brand_title": "Hysteric Glamour",
+          "size_title": "L",
+          "status": "Mycket bra",
+          "price": {
+            "amount": "280.84",
+            "currency_code": "SEK"
+          },
+          "url": "https://www.vinted.se/items/10439391891-mango-cropped-bomber-real-leather-jacket-rave-y2k-glamour-japanese-90s-biker",
+          "photoKeys": [
+            "id",
+            "url",
+            "dominant_color",
+            "is_main",
+            "width",
+            "height",
+            "full_size_url"
+          ],
+          "photosCount": 1,
+          "otherFieldNames": [
+            "display_subtitle",
+            "path",
+            "is_visible",
+            "promoted",
+            "favourite_count",
+            "view_count",
+            "service_fee",
+            "total_item_price",
+            "content_source",
+            "seller_country_code",
+            "similarity_score",
+            "user"
+          ]
+        }
+      ],
+      "itemKeys": [
+        "id",
+        "title",
+        "price",
+        "brand_title",
+        "display_title",
+        "display_subtitle",
+        "size_title",
+        "status",
+        "url",
+        "path",
+        "is_visible",
+        "promoted",
+        "favourite_count",
+        "view_count",
+        "service_fee",
+        "total_item_price",
+        "content_source",
+        "seller_country_code",
+        "similarity_score",
+        "user",
+        "photo",
+        "photos"
+      ]
+    }
+  ]
+}

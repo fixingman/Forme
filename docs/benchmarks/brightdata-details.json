@@ -1,0 +1,41 @@
+{
+  "provider": "brightdata",
+  "startedAt": "2026-10-19T09:06:01.333Z",
+  "kind": "detail lookup, not search",
+  "inputs": [
+    "https://www.vinted.se/items/10440300038-our-legacy-x-stussy-bandana",
+    "https://www.vinted.se/items/10440248134-acne-halsduk",
+    "https://www.vinted.se/items/10440282622-vintage-samsoe-samsoe-leather-jacket"
+  ],
+  "requests": [
+    {
+      "status": 400,
+      "elapsedMs": 1013,
+      "creditsUsed": null
+    }
+  ],
+  "state": "single-item-succeeded-after-batch-rejection",
+  "error": "Provider HTTP 400; no retry performed",
+  "diagnostic": {
+    "status": 200,
+    "elapsedMs": 5817,
+    "creditsUsed": null,
+    "result": {
+      "id": "10440300038",
+      "title": "Our legacy x Stüssy bandana",
+      "brand": "Our Legacy",
+      "price": 500,
+      "currency": "SEK",
+      "url": "https://www.vinted.se/items/10440300038-our-legacy-x-stussy-bandana?ID=10440300038",
+      "imageCount": 6,
+      "availabilityRaw": 1,
+      "protectionPriceRaw": 52750
+    }
+  },
+  "limitations": [
+    "Batch HTTP 400 cause was not retained and remains unknown.",
+    "Diagnostic retained selected fields only.",
+    "Availability code and protection-price units require schema validation.",
+    "No billing amount returned in the recorded header."
+  ]
+}

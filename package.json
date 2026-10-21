@@ -1,0 +1,30 @@
+{
+  "name": "forme-v2",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "test": "playwright test",
+    "data:refresh": "node scripts/refresh-listings.mjs",
+    "data:audit": "node scripts/audit-data.mjs",
+    "data:translate": "node scripts/translate-listings.mjs",
+    "data:import": "node scripts/import-database.mjs",
+    "data:discovery-plan": "node scripts/discovery-plan.mjs",
+    "data:discover": "node scripts/collect-discover.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^1.59.0",
+    "next": "^16.4.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2"
+  }
+}

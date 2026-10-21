@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+.env*
+!.env.example
+*.tsbuildinfo
+playwright-report/
+test-results/
+.DS_Store
+.forme-data/
+public/data/*.tmp
+
+# Scraped marketplace snapshot: regenerate locally with npm run data:refresh
+public/data/vinted.json
+.context/
