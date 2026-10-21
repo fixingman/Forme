@@ -4,7 +4,7 @@ import {useRouter,useSearchParams} from 'next/navigation';
 import {ArrowLeft,ArrowRight,Check,Plus,X} from 'lucide-react';
 import MySizes from './my-sizes';
 import GenderPreferenceControl from './gender-preference';
-import {sameBrand} from '@/lib/brands.mjs';
+import {sameBrand} from '@/lib/domain/brands.mjs';
 import type {Preferences} from '@/lib/preferences';
 export default function Welcome({settings,brands,sizeLabels,finish,leave}:{settings:Preferences;brands:string[];sizeLabels:string[];finish:(value:Preferences)=>void;leave:()=>void}){
  const router=useRouter(),params=useSearchParams();

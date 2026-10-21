@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import {feedbackReview} from '@/lib/feedback-review.mjs';
+import {feedbackReview} from '@/lib/domain/feedback-review.mjs';
 import type {Preferences} from '@/lib/preferences';
 import type {Listing} from '@/lib/catalog';
 export default function FeedbackReview({source,settings,restore}:{source:Listing[];settings:Preferences;restore:(key:string)=>void}){

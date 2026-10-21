@@ -15,7 +15,7 @@ Spot-check found one false positive ("Jean-Michel Basquiat" read as denim); the 
 
 ## Policies kept on purpose
 
-- **Department is never inferred** from brand, size, silhouette or photo (`lib/gender.mjs`). The way to raise coverage is collection scope (Men's catalog searches are tagged `search-filter`) and provider fields, not guessing. Low department coverage is a collection decision, not a classifier gap.
+- **Department is never inferred** from brand, size, silhouette or photo (`lib/domain/gender.mjs`). The way to raise coverage is collection scope (Men's catalog searches are tagged `search-filter`) and provider fields, not guessing. Low department coverage is a collection decision, not a classifier gap.
 - **Style is a taste label**, so inference is allowed but visible: the item page says what it was inferred from.
 - **Rarity is not claimed.** Title mentions are not market scarcity. A real rarity score needs comparable-sale or listing-count data per piece.
 

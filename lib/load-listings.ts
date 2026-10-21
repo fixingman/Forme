@@ -1,4 +1,4 @@
-import {trustedSnapshot} from './data-trust.mjs';
+import {trustedSnapshot} from './domain/data-trust.mjs';
 import type {Listing} from './catalog';
 export type ListingSnapshot={quality?:ReturnType<typeof trustedSnapshot>['quality'];items:Listing[];fetchedAt:string;queries:string[];discovery?:{brands:string[];reportedCredits:number};collection?:{plannedQueries:number;collectedQueries:number;skippedSearches:number}};
 export async function loadListings(signal?:AbortSignal):Promise<ListingSnapshot>{

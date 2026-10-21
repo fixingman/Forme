@@ -1,7 +1,7 @@
 'use client';
 import {useState,type ReactNode} from 'react';
 import {Plus,X} from 'lucide-react';
-import {sizeKey,groupedSizing} from '@/lib/sizes.mjs';
+import {sizeKey,groupedSizing} from '@/lib/domain/sizes.mjs';
 import type {Sizing,SizeGroups} from '@/lib/preferences';
 const letters=['XXS','XS','S','M','L','XL','XXL','3XL','4XL','5XL','6XL'];
 const sizeGroups=[{key:'clothing',name:'Clothing · EU labels',labels:Array.from({length:17},(_,i)=>`EU ${32+i*2}`)},{key:'waist',name:'Waist · W labels',labels:Array.from({length:21},(_,i)=>`W${24+i}`)},{key:'shoes',name:'Shoes · EU labels',labels:Array.from({length:31},(_,i)=>`EU ${34+i*.5}`)}];

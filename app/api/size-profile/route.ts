@@ -1,6 +1,6 @@
-import {normalizeGender} from '@/lib/gender.mjs';
+import {normalizeGender} from '@/lib/domain/gender.mjs';
 import {readFile} from 'node:fs/promises';
-import {normalizeSizing} from '@/lib/sizes.mjs';
+import {normalizeSizing} from '@/lib/domain/sizes.mjs';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 // Local single-user pilot only; no personal profile is served by a Vercel deployment.

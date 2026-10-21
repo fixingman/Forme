@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {canBrowse,freshness,availability} from '@/lib/data-trust.mjs';
+import {canBrowse,freshness,availability} from '@/lib/domain/data-trust.mjs';
 import DataQuality from './data-quality';
 import GlobalFilters from './global-filters';
 import Welcome from './welcome';
@@ -11,17 +11,17 @@ import {navigation as nav,shoppingNavigation,preferenceNavigation,mobileNavigati
 import {loadListings,type ListingSnapshot} from '@/lib/load-listings';
 import RefreshControls from './refresh-controls';
 import FeedbackReview from './feedback-review';
-import {homeActivity} from '@/lib/home-activity.mjs';
-import {listingGender,matchesGender} from '@/lib/gender.mjs';
+import {homeActivity} from '@/lib/domain/home-activity.mjs';
+import {listingGender,matchesGender} from '@/lib/domain/gender.mjs';
 import LocalProfile from './local-profile';
-import {candidateBrands,recommendListings,listingKey} from '@/lib/recommendations.mjs';
-import {classifyListing} from '@/lib/classification.mjs';
-import {groupedSizing} from '@/lib/sizes.mjs';
-import {passesListingReview} from '@/lib/listing-review.mjs';
-import {sameBrand} from '@/lib/brands.mjs';
+import {candidateBrands,recommendListings,listingKey} from '@/lib/domain/recommendations.mjs';
+import {classifyListing} from '@/lib/domain/classification.mjs';
+import {groupedSizing} from '@/lib/domain/sizes.mjs';
+import {passesListingReview} from '@/lib/domain/listing-review.mjs';
+import {sameBrand} from '@/lib/domain/brands.mjs';
 import SettingsTransfer from './settings-transfer';
 import type { Backup } from '@/lib/settings-backup';
-import { englishListing } from '@/lib/listing-language.mjs';
+import { englishListing } from '@/lib/domain/listing-language.mjs';
 import { Home, Compass, Users, Search, Gem, Mail, SlidersHorizontal, Tags, Heart, Settings, Menu, PanelLeftClose, PanelLeftOpen, Plus, X, ChevronLeft, ChevronRight, Sparkles, Ruler, type LucideIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';

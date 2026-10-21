@@ -1,4 +1,4 @@
-import {trustedSnapshot} from '@/lib/data-trust.mjs';
+import {trustedSnapshot} from '@/lib/domain/data-trust.mjs';
 import {openStore} from '@/lib/server/store.mjs';
 import {localAccess} from '@/lib/server/local-access';
 export const runtime='nodejs';

@@ -1,4 +1,4 @@
-import {validTimestamp} from './data-trust.mjs';
+import {validTimestamp} from './domain/data-trust.mjs';
 import {normalizePreferences,type Preferences} from './preferences';
 import type {Listing} from './catalog';
 export type Backup={app:'forme';version:1;exportedAt:string;settings:Preferences;display:{mode:'live'|'demo';collapsed:boolean};savedListings:Listing[]};

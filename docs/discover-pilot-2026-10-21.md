@@ -30,6 +30,6 @@ References: [provider search parameters](https://scrapebadger.com/ecommerce-scra
 
 ## Spending and reruns
 
-`scripts/collect-discover.mjs --collect` uses the private `.forme-data/discovery-pilot-v1.json` ledger, the existing collection lock, per-request reservations, and per-brand checkpoints. The fixed pilot has at most three calls. Completed searches are not repeated; uncertain or failed calls stop without automatic retries. A subsequent run can republish completed checkpoints without provider calls. The ordinary collector's existing daily cap was not raised. No detail lookups or automatic polling were added.
+`scripts/data/collect-discover.mjs --collect` uses the private `.forme-data/discovery-pilot-v1.json` ledger, the existing collection lock, per-request reservations, and per-brand checkpoints. The fixed pilot has at most three calls. Completed searches are not repeated; uncertain or failed calls stop without automatic retries. A subsequent run can republish completed checkpoints without provider calls. The ordinary collector's existing daily cap was not raised. No detail lookups or automatic polling were added.
 
 Validation: production build; 34 Node tests; 29 browser tests; real desktop/mobile smoke checks (8 recommendation cards, no console errors, no horizontal overflow).

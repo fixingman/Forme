@@ -1,6 +1,28 @@
 # FORME v2
 
-A mobile-first Next.js app built from `forme-prototype.html`, with the original warm neutral palette, dark green navigation, and sample catalog. The original HTML remains untouched.
+A mobile-first Next.js app built from `docs/prototype/forme-prototype.html`, with the original warm neutral palette, dark green navigation, and sample catalog. The original HTML remains untouched.
+
+## Project layout
+
+```
+app/                 Next.js routes and API handlers (app/api/*)
+components/          React UI
+lib/                 Client/shared TypeScript: preferences, catalog, navigation, backups of settings
+  domain/            Framework-free logic (.mjs): trust rules, classification, sizes, gender,
+                     recommendations, refresh/availability planning, Vinted normalisation
+  server/            Server-only code: jobs, budget ledger, SQLite store, backup, health, logging
+scripts/
+  data/              Collection, translation, import, audit and coverage commands
+  ops/               Worker, backup/restore, environment and secret checks
+  probes/            One-off provider experiments (spend credits when run)
+data/                Reference data (brand IDs, brand styles, translations, review list)
+public/              Static assets and the Vinted import helpers
+docs/                Roadmap, release runbook, data-quality notes; docs/prototype/ holds the v1 HTML
+tests/
+  unit/              node:test logic tests (npm run test:unit)
+  e2e/               Playwright browser tests (npm test)
+  fixtures/          Sample listings used by tests
+```
 
 ## Run locally
 
@@ -76,7 +98,7 @@ Live listings expose actual photos, condition, size, price and original Vinted l
 
 For an initial Vercel preview, refresh locally and deploy the sanitized snapshot with the app. The snapshot updates on the next deployment; no API keys are needed in the hosted app for this mode. Before automated collection or horizontal scaling, move snapshots, the quota ledger and locking to a shared persistent database, protect refresh jobs, and use a durable queue. The local ledger is not a distributed or account-wide spending limit. Future Tradera/Blocket adapters should return the same provenance fields (`source`, `sourceId`, `sourceKey`) and use globally unique UI IDs before mixing marketplaces.
 
-Validation: `node --test tests/normalization.test.mjs`, `npm test`, and `npm run build`. Browser tests use the snapshot or mocks and spend no credits.
+Validation: `node --test tests/unit/normalization.test.mjs`, `npm test`, and `npm run build`. Browser tests use the snapshot or mocks and spend no credits.
 
 ### English listing text
 

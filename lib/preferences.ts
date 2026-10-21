@@ -1,7 +1,7 @@
-import {defaultGender,normalizeGender,matchesGender} from './gender.mjs';
-import {defaultSizing,normalizeSizing,matchesMySizes,matchesSizeLabels} from './sizes.mjs';
-import {passesListingReview} from './listing-review.mjs';
-import {sameBrand,isExcludedListing} from './brands.mjs';
+import {defaultGender,normalizeGender,matchesGender} from './domain/gender.mjs';
+import {defaultSizing,normalizeSizing,matchesMySizes,matchesSizeLabels} from './domain/sizes.mjs';
+import {passesListingReview} from './domain/listing-review.mjs';
+import {sameBrand,isExcludedListing} from './domain/brands.mjs';
 import { defaults, items, type Listing } from './catalog';
 export type GenderPreference={selected:('men'|'women'|'unisex')[];includeUnknown:boolean};
 export type SizeGroups=Record<'clothing'|'waist'|'shoes'|'other',string[]>;
