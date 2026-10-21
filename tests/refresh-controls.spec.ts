@@ -59,3 +59,19 @@ test('an interrupted background refresh is reported with its reason',async({page
  await page.goto('/tools');await page.getByRole('button',{name:'Preview refresh · free'}).click();await page.getByRole('button',{name:'Run refresh · up to 5 credits'}).click();
  await expect(page.getByText('The collection worker stopped before finishing',{exact:false}).first()).toBeVisible({timeout:10000});
 });
+test('saved-item availability checks preview their cost and report what was found',async({page})=>{
+ let planned:any=null,ran=false;
+ await page.route('**/api/refresh',async route=>{
+  if(route.request().method()==='GET')return route.fulfill({json:{...initial,dailyCap:30,remainingCredits:30,running:false,runs:[]}});
+  const value=route.request().postDataJSON();
+  if(value.action==='plan'){planned=value;return route.fulfill({json:{id:'quote',kind:'availability',maximumCredits:20,maximumItems:2,exactBrandJobs:0,department:'Saved items only',sizeFiltering:'Each saved listing is checked individually; no search is run.',translation:'No translation is involved.',coverage:'2 of 2 saved Vinted listings are due for a check. Each check costs up to 10 credits.',expiresAt:new Date(Date.now()+600000).toISOString(),jobs:[{brand:'Auralee · Cotton shirt',brandId:null},{brand:'Lemaire · Wool jacket',brandId:null}]}});}
+  ran=true;return route.fulfill({json:{status:'complete',checked:2,sold:1,unavailable:0,reserved:0,available:1}});
+ });
+ await page.goto('/tools');await page.getByLabel('Refresh feed',{exact:true}).selectOption('availability');
+ await expect(page.getByText('Saved items to check',{exact:true})).toBeVisible();await expect(page.getByLabel('Saved items to check').locator('option').first()).toContainText('up to 10 credits / 1 item');
+ await page.getByLabel('Saved items to check').selectOption('2');await page.getByRole('button',{name:'Preview refresh · free'}).click();
+ expect(planned.scope).toBe('availability');expect(planned.limit).toBe(2);expect(ran).toBe(false);
+ await expect(page.getByText('Auralee · Cotton shirt',{exact:false})).toBeVisible();await expect(page.getByText('Saved items only',{exact:false}).first()).toBeVisible();
+ await page.getByRole('button',{name:'Run refresh · up to 20 credits'}).click();
+ await expect(page.getByText('Availability checked for 2 saved items: 1 sold',{exact:false})).toBeVisible();expect(ran).toBe(true);
+});

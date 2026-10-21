@@ -16,8 +16,10 @@ export function normalizeVinted(row, fetchedAt, previous, context={}) {
   const unique=[...new Set(provided)];
   let gender=unique.length===1?{gender:unique[0],genderSource:'provider'}:unique.length>1?{gender:'unknown',genderSource:'unknown'}:listingGender({title:row.title});
   if(gender.gender==='unknown'&&!unique.length&&context.department==='men'&&context.catalogIds==='5')gender={gender:'men',genderSource:'search-filter'};
-  const availability=row.is_sold===true?'sold':row.is_closed===true?'unavailable':row.is_reserved===true?'reserved':'unknown';
-  return englishListing({...gender,availability,availabilitySource:availability==='unknown'?'unknown':'provider',...(availability!=='unknown'?{availabilityObservedAt:fetchedAt}:{}),...(Number.isSafeInteger(row.brand_id)?{brandId:String(row.brand_id)}:{}),brandSource:'provider-label',...(context.catalogIds?{collectionCatalogIds:context.catalogIds}:{}),id,source:'vinted',sourceId:String(id),sourceKey:`vinted:${id}`,sourceUrl:url.href,
+  let availability=row.is_sold===true?'sold':row.is_closed===true?'unavailable':row.is_reserved===true?'reserved':'unknown',observedAt=fetchedAt;
+  // A later search that says nothing must not erase a sold/removed state we already confirmed with the provider.
+  if(availability==='unknown'&&['sold','unavailable'].includes(previous?.availability)&&previous.availabilitySource==='provider'&&validTimestamp(previous.availabilityObservedAt)){availability=previous.availability;observedAt=previous.availabilityObservedAt;}
+  return englishListing({...gender,availability,availabilitySource:availability==='unknown'?'unknown':'provider',...(availability!=='unknown'?{availabilityObservedAt:observedAt}:{}),...(Number.isSafeInteger(row.brand_id)?{brandId:String(row.brand_id)}:{}),brandSource:'provider-label',...(context.catalogIds?{collectionCatalogIds:context.catalogIds}:{}),id,source:'vinted',sourceId:String(id),sourceKey:`vinted:${id}`,sourceUrl:url.href,
     title:String(row.title).slice(0,300),brand:typeof row.brand_title==='string'&&row.brand_title.trim()?row.brand_title.trim().slice(0,200):'Unspecified brand',
     price,currency,size:typeof row.size_title==='string'&&row.size_title.trim()?row.size_title.trim().slice(0,100):'Not provided',
     condition:typeof row.status==='string'&&row.status.trim()?row.status.trim().slice(0,200):'Condition not provided',

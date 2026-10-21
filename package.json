@@ -13,7 +13,8 @@
     "data:import": "node scripts/import-database.mjs",
     "data:discovery-plan": "node scripts/discovery-plan.mjs",
     "data:discover": "node scripts/collect-discover.mjs",
-    "worker": "node scripts/worker.mjs"
+    "worker": "node scripts/worker.mjs",
+    "data:coverage": "node scripts/data-coverage.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.59.0",
