@@ -4,7 +4,7 @@ A mobile-first Next.js app built from `forme-prototype.html`, with the original 
 
 ## Run locally
 
-Use Node.js 22 or newer.
+Use Node.js 24 or newer (see `.nvmrc`); the local database uses `node:sqlite`.
 
 ```sh
 npm ci
@@ -26,6 +26,10 @@ Open http://127.0.0.1:3000. Production: `npm run build`, then `npm start`.
 - Rare Finds and daily digest previews remain under experimental tools, outside primary navigation. Scheduled delivery and live rarity classification are not connected.
 
 See [data trust and audit](docs/data-trust.md) and [core experience notes](docs/core-experience.md) for behavior and verification boundaries.
+
+## Operations
+
+`npm run worker` runs the collection worker; `npm run backup`, `npm run backup:drill` and `npm run restore` handle backups; `npm run data:coverage` reports field coverage; `npm run env:check` and `npm run check:secrets` check configuration. See [release basics](docs/release.md) and [data quality](docs/data-quality.md).
 
 ## Getting data
 
@@ -52,7 +56,7 @@ Playwright tests use installed Google Chrome (`channel: 'chrome'`) and automatic
 
 ## Vercel readiness
 
-The frontend uses a standard Next.js build (`npm run build`), but the current live backend is local-only: loopback-protected APIs, filesystem storage and in-request jobs are not production hosting architecture. A hosted database, sign-in, durable jobs and managed secrets are required before deployment. See [production roadmap](docs/production-roadmap.md). This project has not been published. Local browser preferences do not transfer to a new origin automatically.
+The frontend uses a standard Next.js build (`npm run build`), but the current live backend is local-only: loopback-protected APIs and filesystem storage are not production hosting architecture (collection now runs as background jobs, but on local storage). A hosted database, sign-in, durable jobs and managed secrets are required before deployment. See [production roadmap](docs/production-roadmap.md). This project has not been published. Local browser preferences do not transfer to a new origin automatically.
 
 ## Visual direction
 

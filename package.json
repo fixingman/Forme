@@ -14,7 +14,14 @@
     "data:discovery-plan": "node scripts/discovery-plan.mjs",
     "data:discover": "node scripts/collect-discover.mjs",
     "worker": "node scripts/worker.mjs",
-    "data:coverage": "node scripts/data-coverage.mjs"
+    "data:coverage": "node scripts/data-coverage.mjs",
+    "backup": "node scripts/backup.mjs",
+    "restore": "node scripts/restore.mjs",
+    "backup:drill": "node scripts/backup-drill.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "node --test tests/*.test.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "env:check": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.59.0",
@@ -28,5 +35,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

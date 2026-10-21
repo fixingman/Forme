@@ -10,7 +10,7 @@ Real provider collection, normalized public listings, explicit cost previews, a 
 
 - Preferences primarily live in localStorage; the local database copy is an explicit checkpoint, not automatic account sync.
 - Listings and observations live in local SQLite and JSON files. The server endpoints are deliberately restricted to loopback and disabled on Vercel. Removing those checks would not supply authentication or durable shared storage.
-- Refresh jobs run inside an HTTP request, use file locks, and need manual review after process interruption. Local spending ledgers are not a shared production quota.
+- Refresh jobs are now queued and run by a worker with a lease and heartbeat (21 Oct 2026); interrupted runs are marked and never retried automatically. Storage is still local SQLite and file locks, so the spending ledger is per-machine, not a shared production quota.
 - Most initial listings lack department metadata; size/category inference and translation coverage remain incomplete. Only three pilot brands have verified exact provider brand IDs. Source availability and sold status are not routinely checked.
 - Daily digest delivery, live rarity classification and learned style recommendations are incomplete. Collection details and experimental previews have been moved to local Collection tools; those tools still need authenticated owner access before deployment. The application remains concentrated in a large client shell.
 - There is no complete staging/release/monitoring/restore workflow or measured recommendation-quality baseline with real usage.
@@ -42,6 +42,8 @@ Make the feed distinction visible: Home is recent personal changes, Following is
 Acceptance: a new invited user can set preferences and reach a relevant feed without instructions, and can understand why a recommendation appears and how to change it.
 
 ## Milestone 4: release and measure
+
+Status 21 October 2026: CI, dependency updates, tested backup/restore with a drill, a health endpoint, redacted structured logs, environment and secret checks and a release runbook are in the repository ([release basics](release.md)). Hosted staging, an external monitor, a secrets manager and offsite backups still need accounts.
 
 Add version-controlled releases, automated CI, staging, deployment rollback, error/job monitoring, restore-tested backups and managed secrets. Record only the events needed to assess impressions, saves, dismissals and marketplace opens, with clear privacy/retention choices. Keep preference counts distinct from measured rates. Test the costly failure cases as well as ordinary navigation.
 

@@ -13,3 +13,4 @@ public/data/*.tmp
 # Scraped marketplace snapshot: regenerate locally with npm run data:refresh
 public/data/vinted.json
 .context/
+.forme-backups/
