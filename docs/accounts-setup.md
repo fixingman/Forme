@@ -114,7 +114,7 @@ For Claude Code, use `/mcp` to authenticate the Supabase server. In Conductor, r
 References: [Conductor MCP configuration and refresh](https://www.conductor.build/docs/reference/mcp), [Codex MCP configuration and OAuth](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [Supabase MCP setup](https://supabase.com/docs/guides/ai-tools/mcp).
 
 ## Known limits
-- Supabase's built-in email sender is heavily rate-limited and some addresses never receive its messages. For anything beyond a quick test, add your own SMTP provider (Authentication → SMTP Settings) or use Google sign-in.
+- Supabase's built-in email sender is heavily rate-limited and some addresses never receive its messages. The beta now sends through Resend's SMTP (Authentication → SMTP Settings: host `smtp.resend.com`, port 465, username `resend`, password a sending-only Resend API key, sender `onboarding@resend.dev`). That shared test sender delivers only to the Resend account's own address, which is enough for one owner and may land in spam. Adding a person or a proper sender later means verifying a domain you control in Resend. Never paste the API key anywhere but Supabase's password field.
 - A fresh checkout has no listings. The Home banner now says "No live listings are available yet" rather than failing; run a collection, then `npm run publish` for the hosted app.
 - Email-link sign-in has since been run against the real project (see [project state](project-state.md)); Google has not and is switched off. Dashboard labels may differ slightly from the names above.
 - Proxy only checks that a session cookie is valid; the invite check happens on full page loads and on every API call, as the Next.js auth guide recommends.

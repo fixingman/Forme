@@ -28,6 +28,8 @@ Rationale: a clear shopping flow with fewer controls and honest recommendations.
 
 **23 October — user decision.** Do not enable Google sign-in for now; email links only. The login page hides the Google button unless `FORME_GOOGLE_SIGNIN=1`, and `/auth/google` refuses while it is off. This narrows the earlier "email link or Google" direction; it can be reversed by setup alone.
 
+**23 October — user decision.** Send sign-in email through Resend over SMTP, using Resend's shared test sender because the owner has no domain to verify. This delivers only to the Resend account's own address, which suffices for a single owner; it is a stopgap, not a deliverability plan. A key pasted into chat is treated as exposed and must be revoked; keys go only into Supabase's SMTP password field.
+
 Rationale: cross-device use without building password handling or prematurely moving paid collection into the cloud. Reference: [accounts setup, sync behavior and limitations](accounts-setup.md). Both passwordless paths now exist in code; which providers to enable in the real project remains a setup choice.
 
 ## Data trust
