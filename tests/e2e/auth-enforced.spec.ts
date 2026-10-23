@@ -30,7 +30,7 @@ test('signed-out API requests get 401 and no data, including collection and prof
 });
 test('the login page is reachable, minimal, and reflects nothing from the query string',async()=>{
  const page=await api.get('/login?error=%3Cscript%3Ealert(1)%3C/script%3E');expect(page.status()).toBe(200);
- const html=await page.text();expect(html).toContain('action="/auth/login"');expect(html).toContain('/auth/google');expect(html).not.toContain('Main navigation');expect(html).not.toContain('<script>alert');
+ const html=await page.text();expect(html).toContain('action="/auth/login"');expect(html).not.toContain('/auth/google');expect(html).not.toContain('Continue with Google');expect(html).not.toContain('Main navigation');expect(html).not.toContain('<script>alert');
  expect(await (await api.get('/login?error=not-invited')).text()).toContain('invite list');
 });
 test('sign-in posts must come from this site, and answer identically whatever the address',async()=>{
@@ -40,6 +40,9 @@ test('sign-in posts must come from this site, and answer identically whatever th
  expect(same.status()).toBe(303);const location=new URL(same.headers().location,base);
  expect(location.origin).toBe(base);expect(location.searchParams.get('sent')).toBe('1');expect(location.searchParams.get('next')).toBe('/');
  const other=await api.post('/auth/login',{headers:{origin:base},form:{email:'not-an-email'}});expect(other.headers().location).toBe(same.headers().location);
+});
+test('the Google route refuses while Google sign-in is switched off',async()=>{
+ const response=await api.get('/auth/google');expect(response.status()).toBe(303);expect(response.headers().location).toContain('error=unavailable');
 });
 test('callbacks and sign-out fail closed and stay on this host',async()=>{
  for(const path of ['/auth/callback?code=bogus','/auth/confirm?token_hash=bogus&type=email','/auth/callback?error=access_denied']){

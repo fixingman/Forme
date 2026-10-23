@@ -1,6 +1,6 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { authRequired, loginError, safeNext, supabaseConfig } from '@/lib/server/auth-policy.mjs';
+import { authRequired, googleEnabled, loginError, safeNext, supabaseConfig } from '@/lib/server/auth-policy.mjs';
 import { currentAccess } from '@/lib/server/session';
 
 export const metadata = { title: 'Sign in — FORME' };
@@ -30,8 +30,10 @@ export default async function Login({searchParams}: {searchParams: Promise<Recor
             <div className="field"><label htmlFor="email">Email</label><input id="email" name="email" type="email" autoComplete="email" inputMode="email" autoCapitalize="none" required maxLength={254} /></div>
             <button className="btn" type="submit">Email me a sign-in link</button>
           </form>
-          <div className="auth-divider"><span>or</span></div>
-          <a className="btn light" href={`/auth/google?next=${encodeURIComponent(next)}`}>Continue with Google</a>
+          {googleEnabled() && <>
+            <div className="auth-divider"><span>or</span></div>
+            <a className="btn light" href={`/auth/google?next=${encodeURIComponent(next)}`}>Continue with Google</a>
+          </>}
         </>}
         {signedInUninvited && <form method="post" action="/auth/signout" className="auth-signout"><button className="textbutton" type="submit">Sign out of the current account</button></form>}
       </div>

@@ -49,9 +49,9 @@ test('bad keys, bad URLs and unreachable projects stop early with a clear messag
  assert.match((await checkSupabase({url:'not a url',key:'k',fetchImpl:fetch}))[0].detail,/not a valid URL/);
  const down=await run({down:true});assert.equal(down.length,1);assert.match(down[0].detail,/Could not connect/);
 });
-test('optional providers only warn',async()=>{
+test('Google is optional, and only risky email settings warn',async()=>{
  const r=await run({settings:{external:{email:true,google:false},mailer_autoconfirm:true}});
- assert.equal(by(r,'Google sign-in').status,'warn');assert.equal(by(r,'Email confirmation').status,'warn');assert.equal(worst(r),'warn');
+ assert.equal(by(r,'Google sign-in').status,'pass');assert.equal(by(r,'Email confirmation').status,'warn');assert.equal(worst(r),'warn');
  assert.equal(by(await run({settings:{external:{email:false}}}),'Email sign-in enabled').status,'fail');
 });
 test('owner checks compare the invite list with the Supabase users, read-only and without printing emails',async()=>{

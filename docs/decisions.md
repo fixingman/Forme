@@ -26,6 +26,8 @@ Rationale: a clear shopping flow with fewer controls and honest recommendations.
 - Preserve local preferences and JSON exports. Sync can adopt an existing account profile, retaining the prior browser copy; concurrent edits use revision checks rather than silent overwrites.
 - Vercel remains the documented hosting direction, not a provisioned service. Inngest/a hosted durable worker and a distributed spending ledger remain proposals for later work, not selected dependencies to add automatically.
 
+**23 October — user decision.** Do not enable Google sign-in for now; email links only. The login page hides the Google button unless `FORME_GOOGLE_SIGNIN=1`, and `/auth/google` refuses while it is off. This narrows the earlier "email link or Google" direction; it can be reversed by setup alone.
+
 Rationale: cross-device use without building password handling or prematurely moving paid collection into the cloud. Reference: [accounts setup, sync behavior and limitations](accounts-setup.md). Both passwordless paths now exist in code; which providers to enable in the real project remains a setup choice.
 
 ## Data trust

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {originOf,supabaseConfig,authRequired,safeNext,sameOrigin,normalizeEmail,validEmail,accessFor,loginError} from '../../lib/server/auth-policy.mjs';
+import {googleEnabled,originOf,supabaseConfig,authRequired,safeNext,sameOrigin,normalizeEmail,validEmail,accessFor,loginError} from '../../lib/server/auth-policy.mjs';
 const env={NEXT_PUBLIC_SUPABASE_URL:'https://abc.supabase.co',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_x'};
 const h=obj=>new Headers(obj);
 test('auth is off without Supabase config, and on for every hosted or non-loopback request',()=>{
@@ -53,4 +53,7 @@ test('the site origin follows the Host the visitor used, so cookies and redirect
  assert.equal(originOf(h({host:'forme.app','x-forwarded-proto':'javascript'}),'https://forme.app/x'),'https://forme.app');
  for(const bad of ['evil.com/path','a b','evil.com@x.com','','x.com:99999999'])assert.equal(originOf(h(bad?{host:bad}:{}),'https://fallback.app/x'),'https://fallback.app',bad);
  assert.equal(originOf(h({host:'[::1]:3000'}),'http://localhost:3000/'),'http://[::1]:3000');
+});
+test('Google sign-in is off unless explicitly enabled',()=>{
+ assert.equal(googleEnabled({}),false);assert.equal(googleEnabled({FORME_GOOGLE_SIGNIN:'0'}),false);assert.equal(googleEnabled({FORME_GOOGLE_SIGNIN:'true'}),false);assert.equal(googleEnabled({FORME_GOOGLE_SIGNIN:'1'}),true);
 });

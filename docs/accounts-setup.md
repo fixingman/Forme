@@ -50,7 +50,9 @@ By default a link must be opened in the same browser that asked for it. To open 
 
 Supabase's built-in email sender has a very small hourly limit. That is fine for one person; add your own SMTP provider later if you hit it.
 
-### 6. Google (optional, but quicker than waiting for email)
+### 6. Google (skipped for now, by choice)
+Not enabled, and the login page hides the Google button. If you change your mind: do the steps below, then set `FORME_GOOGLE_SIGNIN=1` where the app runs so the button appears.
+
 Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Web application. Add the redirect URI shown on Supabase's Google provider page (Authentication → Providers → Google), then paste the client ID and secret into that page and enable it. Your Google account's email must match the one you invited.
 
 ### 7. Keys and deploy
@@ -99,7 +101,7 @@ This proves the dashboard and database settings. It cannot prove that an email a
 ## Known limits
 - Supabase's built-in email sender is heavily rate-limited and some addresses never receive its messages. For anything beyond a quick test, add your own SMTP provider (Authentication → SMTP Settings) or use Google sign-in.
 - A fresh checkout has no listings. The Home banner now says "No live listings are available yet" rather than failing; run a collection, then `npm run publish` for the hosted app.
-- Not yet run against a real Supabase project (see top). Dashboard labels may differ slightly from the names above.
+- Email-link sign-in has since been run against the real project (see [project state](project-state.md)); Google has not and is switched off. Dashboard labels may differ slightly from the names above.
 - Proxy only checks that a session cookie is valid; the invite check happens on full page loads and on every API call, as the Next.js auth guide recommends.
 - A removed invitee's existing session still passes Proxy until it expires, but sees no data (APIs and the database refuse them, and a page load signs them out to the login page).
 - Hosted refresh from your phone is not built: collection needs your computer. A later step could let the phone queue a run for your computer to pick up.
