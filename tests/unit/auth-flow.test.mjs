@@ -42,7 +42,8 @@ test('magic links never create accounts and reject malformed addresses before ca
  const s=fake();const r=await sendLink(s,'  Me@Example.com ','https://forme.app/auth/callback?next=%2F');
  assert.equal(r.ok,true);assert.deepEqual(s.calls[0],['otp',{email:'me@example.com',options:{shouldCreateUser:false,emailRedirectTo:'https://forme.app/auth/callback?next=%2F'}}]);
  const t=fake();assert.deepEqual(await sendLink(t,'not-an-email','x'),{ok:false,reason:'invalid'});assert.equal(t.calls.length,0);
- assert.deepEqual(await sendLink(fake({otpError:new Error('Signups not allowed')}),'a@b.co','x'),{ok:false,reason:'provider'});
+ assert.deepEqual(await sendLink(fake({otpError:Object.assign(new Error('Signups not allowed'),{status:422,code:'otp_disabled'})}),'a@b.co','x'),{ok:false,reason:'provider',status:422,code:'otp_disabled'});
+ assert.deepEqual(await sendLink(fake({otpError:new Error('x')}),'a@b.co','x'),{ok:false,reason:'provider',status:null,code:null});
 });
 test('Google sign-in returns the provider URL without auto-redirecting server-side',async()=>{
  const s=fake();assert.equal(await googleUrl(s,'https://forme.app/auth/callback'),'https://accounts.google.com/x');

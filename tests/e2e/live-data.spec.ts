@@ -64,3 +64,25 @@ test('larger feeds reveal additional listings without rendering the entire batch
  await expect(page.locator('.product')).toHaveCount(29);
  await expect(page.getByRole('button',{name:'Show more',exact:false})).toHaveCount(0);
 });
+
+test('with no listings anywhere, the banner says so plainly instead of showing a JSON parse error',async({page})=>{
+ // What a fresh checkout does: the database has nothing (404) and the static file is missing, so the catch-all page answers with HTML.
+ await page.route('**/api/listings',route=>route.fulfill({status:404,json:{error:'Import a snapshot first'}}));
+ await page.route('**/data/vinted.json',route=>route.fulfill({status:200,contentType:'text/html',body:'<!DOCTYPE html><html><body>FORME</body></html>'}));
+ await page.goto('/following');
+ await expect(page.getByText('No live listings are available yet.',{exact:false})).toBeVisible();
+ await expect(page.getByText('Unexpected token',{exact:false})).toHaveCount(0);await expect(page.getByText('not valid JSON',{exact:false})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Retry listings'})).toBeVisible();
+ await expect(page.locator('[data-testid^="listing-"]')).toHaveCount(0);
+});
+test('a missing database answer with a real static snapshot still loads, and a plain 404 for both is the empty state',async({page})=>{
+ await page.route('**/api/listings',route=>route.fulfill({status:404,json:{error:'Nothing has been published yet.'}}));
+ await page.goto('/following');await expect(page.getByTestId(`listing-${first.id}`)).toBeVisible();
+ await page.unroute('**/data/vinted.json');await page.route('**/data/vinted.json',route=>route.fulfill({status:404,body:'Not found'}));
+ await page.goto('/discover');await expect(page.getByText('No live listings are available yet.',{exact:false})).toBeVisible();
+});
+test('a server error and a garbled answer stay the generic failure, never a parser message',async({page})=>{
+ await page.route('**/data/vinted.json',route=>route.fulfill({status:200,contentType:'application/json',body:'{not json'}));
+ await page.goto('/following');await expect(page.getByText('Live listings could not be loaded.',{exact:false})).toBeVisible();
+ await expect(page.getByText('JSON',{exact:false})).toHaveCount(0);
+});

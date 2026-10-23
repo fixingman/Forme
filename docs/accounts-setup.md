@@ -97,6 +97,8 @@ This proves the dashboard and database settings. It cannot prove that an email a
 `insert into public.allowed_users (email, role) values ('friend@example.com', 'member');`, then create them under Authentication → Users (sign-up is off). Remove the row to revoke access immediately. Members cannot collect or publish, and each person's preferences are private to them.
 
 ## Known limits
+- Supabase's built-in email sender is heavily rate-limited and some addresses never receive its messages. For anything beyond a quick test, add your own SMTP provider (Authentication → SMTP Settings) or use Google sign-in.
+- A fresh checkout has no listings. The Home banner now says "No live listings are available yet" rather than failing; run a collection, then `npm run publish` for the hosted app.
 - Not yet run against a real Supabase project (see top). Dashboard labels may differ slightly from the names above.
 - Proxy only checks that a session cookie is valid; the invite check happens on full page loads and on every API call, as the Next.js auth guide recommends.
 - A removed invitee's existing session still passes Proxy until it expires, but sees no data (APIs and the database refuse them, and a page load signs them out to the login page).
