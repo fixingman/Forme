@@ -98,6 +98,21 @@ This proves the dashboard and database settings. It cannot prove that an email a
 ## Adding someone later
 `insert into public.allowed_users (email, role) values ('friend@example.com', 'member');`, then create them under Authentication → Users (sign-up is off). Remove the row to revoke access immediately. Members cannot collect or publish, and each person's preferences are private to them.
 
+## Agent MCP connection
+
+The repository includes matching, project-scoped Supabase MCP entries for both agent hosts:
+
+- [`.codex/config.toml`](../.codex/config.toml) is used by Codex, including Codex sessions inside Conductor. Codex loads project configuration for trusted projects.
+- [`.mcp.json`](../.mcp.json) is used by Claude Code sessions inside Conductor. This file alone does not configure a standalone Codex project.
+
+These files contain the project endpoint and feature selection, not credentials. MCP OAuth is separate from the app's Supabase public keys and the FORME user's email-link login. Keep OAuth credentials in the client's local credential store; never add a personal access token or Authorization header to either shared file.
+
+For Codex, run `codex mcp list` from this checkout to verify discovery, then `codex mcp login supabase` and complete the browser authorization for the organization containing FORME. If automatic registration fails, the installed CLI also supports `codex mcp login supabase --oauth-client-registration dcr`. A callback/token-exchange error means authentication did not complete, even if the server is listed as enabled.
+
+For Claude Code, use `/mcp` to authenticate the Supabase server. In Conductor, refresh MCP status after changing configuration; restart the affected agent session if it still has the old tool catalog. Confirm connection by calling a read-only MCP tool such as `list_tables` for the `public` schema. Do not call migrations or write SQL merely to test the connection, and do not claim that an HTTP/API check was an MCP tool call.
+
+References: [Conductor MCP configuration and refresh](https://www.conductor.build/docs/reference/mcp), [Codex MCP configuration and OAuth](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [Supabase MCP setup](https://supabase.com/docs/guides/ai-tools/mcp).
+
 ## Known limits
 - Supabase's built-in email sender is heavily rate-limited and some addresses never receive its messages. For anything beyond a quick test, add your own SMTP provider (Authentication → SMTP Settings) or use Google sign-in.
 - A fresh checkout has no listings. The Home banner now says "No live listings are available yet" rather than failing; run a collection, then `npm run publish` for the hosted app.

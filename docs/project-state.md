@@ -55,4 +55,6 @@ Useful commands: `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm
 
 ## Handoff maintenance
 
+23 October MCP verification: the root `.mcp.json` configures Claude Code; matching `.codex/config.toml` now configures Codex. After the first OAuth token exchange failed, `codex mcp login supabase --oauth-client-registration dcr` succeeded. A fresh Codex app-server MCP client reported OAuth authentication, discovered 20 tools, and successfully called read-only `list_tables` for `public`, confirming the four expected tables with RLS enabled. No model turn, migration or database write was used for verification. Already-running agent sessions may need an MCP status refresh/new session to load the configuration; see [MCP setup](accounts-setup.md#agent-mcp-connection).
+
 Update the review date and code baseline after meaningful changes. Replace completed next steps with their actual outcome and evidence, retaining limitations. Keep durable choices in [decisions](decisions.md), private observations in local notes, and detailed operational instructions in their owning docs. Record a newly discovered disagreement between memory and code before relying on either.
