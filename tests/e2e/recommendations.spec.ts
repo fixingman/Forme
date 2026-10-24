@@ -15,11 +15,11 @@ test('Discover differs from Following, explains a recommendation, and persists d
  await page.goto('/following');await expect(page.getByTestId('listing-10001')).toBeVisible();await expect(page.getByTestId('listing-10002')).toHaveCount(0);
  await page.goto('/discover');await expect(page.getByTestId('listing-10001')).toHaveCount(0);await expect(page.getByTestId('listing-10002')).toBeVisible();
  await expect(page.getByTestId('listing-10002')).toContainText('Because you follow Our Legacy');
- await page.getByRole('button',{name:'Not interested in Wool jacket'}).click();await expect(page.getByTestId('listing-10002')).toHaveCount(0);
+ await page.getByRole('button',{name:'Not for me: Wool jacket'}).click();await expect(page.getByTestId('listing-10002')).toHaveCount(0);
  await page.reload();await expect(page.getByTestId('listing-10002')).toHaveCount(0);
  // Dismiss again after undo to verify immediate undo independently from reload.
  await page.evaluate(()=>{const prefs=JSON.parse(localStorage.getItem('forme-v2')!);prefs.dismissed=[];localStorage.setItem('forme-v2',JSON.stringify(prefs));});await page.reload();
- await page.getByRole('button',{name:'Not interested in Wool jacket'}).click();await page.getByRole('button',{name:'Undo last Not interested'}).click();await expect(page.getByTestId('listing-10002')).toBeVisible();
+ await page.getByRole('button',{name:'Not for me: Wool jacket'}).click();await page.getByRole('button',{name:'Undo Not for me'}).click();await expect(page.getByTestId('listing-10002')).toBeVisible();
 });
 test('local profile save checks revisions and previews restore without changing the browser',async({page})=>{
  const local={app:'forme',version:1,exportedAt:new Date().toISOString(),settings:{...settings,following:['Margaret Howell']},display:{mode:'live',collapsed:false},savedListings:[]};
@@ -28,7 +28,7 @@ test('local profile save checks revisions and previews restore without changing 
   if(route.request().method()==='GET')return route.fulfill({json:{revision,profile:local}});
   const payload=route.request().postDataJSON();expect(payload.baseRevision).toBe(revision);expect(payload.profile.settings.following).toEqual(['Our Legacy']);revision++;return route.fulfill({json:{revision}});
  });
- await page.goto('/tools');await page.getByRole('button',{name:'Check local copy'}).click();await expect(page.getByRole('button',{name:'Restore local copy'})).toBeVisible();
+ await page.goto('/tools');await page.getByText('Local settings backup',{exact:true}).click();await page.getByRole('button',{name:'Check local copy'}).click();await expect(page.getByRole('button',{name:'Restore local copy'})).toBeVisible();
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('forme-v2')!).following)).toEqual(['Our Legacy']);
  await page.getByRole('button',{name:'Save current settings locally'}).click();await expect(page.getByText('Settings saved on this computer.',{exact:false})).toBeVisible();
 });

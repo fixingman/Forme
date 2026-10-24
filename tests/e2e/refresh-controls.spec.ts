@@ -18,16 +18,16 @@ test('preview spends nothing, cap gates the run and only an explicit run refresh
   if(value.action==='budget'){expect(value.dailyCap).toBe(30);status={...status,dailyCap:30,remainingCredits:15};return route.fulfill({json:status});}
   expect(value.action).toBe('run');expect(value.id).toBe('quote');runs++;return route.fulfill({json:{status:'complete',accepted:1,eligible:1,pendingTranslations:0}});
  });
- await page.goto('/tools');await page.getByRole('button',{name:'Preview refresh · free'}).click();expect(runs).toBe(0);
- await expect(page.getByRole('button',{name:'Run refresh · up to 15 credits'})).toBeDisabled();
- await page.getByLabel('Daily credit cap',{exact:true}).fill('30');await page.getByRole('button',{name:'Save daily cap',exact:true}).click();expect(runs).toBe(0);
- await page.getByRole('button',{name:'Run refresh · up to 15 credits'}).click();await expect(page.getByText('Refresh complete:',{exact:false})).toBeVisible();expect(runs).toBe(1);
+ await page.goto('/tools');await page.getByRole('button',{name:'See refresh cost'}).click();expect(runs).toBe(0);
+ await expect(page.getByRole('button',{name:'Find pieces · up to 15 credits'})).toBeDisabled();
+ await page.getByText('Budget and history',{exact:true}).click();await page.getByLabel('Daily credit cap',{exact:true}).fill('30');await page.getByRole('button',{name:'Save daily cap',exact:true}).click();expect(runs).toBe(0);
+ await page.getByRole('button',{name:'Find pieces · up to 15 credits'}).click();await expect(page.getByText('Refresh complete:',{exact:false})).toBeVisible();expect(runs).toBe(1);
 });
 test('changing preferences discards the preview and feedback can restore a hidden recommendation',async({page})=>{
  await page.route('**/api/refresh',route=>route.fulfill({json:route.request().method()==='GET'?initial:{id:'quote',maximumCredits:5,maximumItems:20,exactBrandJobs:1,department:'Men’s catalog',sizeFiltering:'Local sizes.',translation:'Cached translations.',coverage:'Clothing only.',jobs:[{brand:'Auralee',brandId:'2053426'}]}}));
- await page.goto('/tools');await page.getByRole('button',{name:'Preview refresh · free'}).click();await expect(page.getByRole('button',{name:'Run refresh · up to 5 credits'})).toBeVisible();
- await page.goto('/settings');await page.getByRole('button',{name:'My sizes and departments',exact:true}).click();await page.getByRole('checkbox',{name:'Women',exact:true}).uncheck();await page.getByRole('button',{name:'Apply filters',exact:true}).click();await page.goto('/tools');await expect(page.getByRole('button',{name:'Run refresh · up to 5 credits'})).toHaveCount(0);
- await page.getByText('Review hidden pieces (1)',{exact:true}).click();await page.getByRole('button',{name:'Restore Wool jacket',exact:true}).click();
+ await page.goto('/tools');await page.getByRole('button',{name:'See refresh cost'}).click();await expect(page.getByRole('button',{name:'Find pieces · up to 5 credits'})).toBeVisible();
+ await page.goto('/settings');await page.getByRole('button',{name:'My sizes and departments',exact:true}).click();await page.getByRole('checkbox',{name:'Women',exact:true}).uncheck();await page.getByRole('button',{name:'Apply filters',exact:true}).click();await page.goto('/tools');await expect(page.getByRole('button',{name:'Find pieces · up to 5 credits'})).toHaveCount(0);
+ await page.locator('#feedback > summary').click();await page.getByText('Review hidden pieces (1)',{exact:true}).click();await page.getByRole('button',{name:'Restore Wool jacket',exact:true}).click();
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('forme-v2')!).dismissed)).toEqual([]);
  await page.goto('/discover');await expect(page.getByTestId('listing-50002')).toBeVisible();
 });
@@ -44,7 +44,7 @@ test('a queued refresh runs in the background, the page follows progress and a f
   if(value.action==='plan')return route.fulfill({json:{id:'quote',maximumCredits:5,maximumItems:20,exactBrandJobs:1,department:'Men’s catalog',sizeFiltering:'Local sizes.',translation:'Cached translations.',coverage:'Clothing only.',expiresAt:new Date(Date.now()+600000).toISOString(),jobs:[{brand:'Auralee',brandId:'2053426'}]}});
   phase='running';return route.fulfill({status:202,json:{id:'quote',status:'queued'}});
  });
- await page.goto('/tools');await page.getByRole('button',{name:'Preview refresh · free'}).click();await page.getByRole('button',{name:'Run refresh · up to 5 credits'}).click();
+ await page.goto('/tools');await page.getByRole('button',{name:'See refresh cost'}).click();await page.getByRole('button',{name:'Find pieces · up to 5 credits'}).click();
  await expect(page.getByText('Refresh started in the background',{exact:false})).toBeVisible();
  phase='complete';await expect(page.getByText('Refresh complete: 2 validated listings',{exact:false})).toBeVisible({timeout:10000});
 });
@@ -56,7 +56,7 @@ test('an interrupted background refresh is reported with its reason',async({page
   if(value.action==='plan')return route.fulfill({json:{id:'quote',maximumCredits:5,maximumItems:20,exactBrandJobs:1,department:'Men’s catalog',sizeFiltering:'Local sizes.',translation:'Cached translations.',coverage:'Clothing only.',expiresAt:new Date(Date.now()+600000).toISOString(),jobs:[{brand:'Auralee',brandId:'2053426'}]}});
   started=true;return route.fulfill({status:202,json:{id:'quote',status:'queued'}});
  });
- await page.goto('/tools');await page.getByRole('button',{name:'Preview refresh · free'}).click();await page.getByRole('button',{name:'Run refresh · up to 5 credits'}).click();
+ await page.goto('/tools');await page.getByRole('button',{name:'See refresh cost'}).click();await page.getByRole('button',{name:'Find pieces · up to 5 credits'}).click();
  await expect(page.getByText('The collection worker stopped before finishing',{exact:false}).first()).toBeVisible({timeout:10000});
 });
 test('saved-item availability checks preview their cost and report what was found',async({page})=>{
@@ -68,10 +68,10 @@ test('saved-item availability checks preview their cost and report what was foun
   ran=true;return route.fulfill({json:{status:'complete',checked:2,sold:1,unavailable:0,reserved:0,available:1}});
  });
  await page.goto('/tools');await page.getByLabel('Refresh feed',{exact:true}).selectOption('availability');
- await expect(page.getByText('Saved items to check',{exact:true})).toBeVisible();await expect(page.getByLabel('Saved items to check').locator('option').first()).toContainText('up to 10 credits / 1 item');
- await page.getByLabel('Saved items to check').selectOption('2');await page.getByRole('button',{name:'Preview refresh · free'}).click();
+ await expect(page.getByText('Saved items to check',{exact:true})).toBeVisible();await expect(page.getByLabel('Saved items to check').locator('option').first()).toContainText('up to 10 credits');
+ await page.getByLabel('Saved items to check').selectOption('2');await page.getByRole('button',{name:'See refresh cost'}).click();
  expect(planned.scope).toBe('availability');expect(planned.limit).toBe(2);expect(ran).toBe(false);
- await expect(page.getByText('Auralee · Cotton shirt',{exact:false})).toBeVisible();await expect(page.getByText('Saved items only',{exact:false}).first()).toBeVisible();
- await page.getByRole('button',{name:'Run refresh · up to 20 credits'}).click();
+ await expect(page.getByText('Auralee · Cotton shirt',{exact:false})).toBeVisible();await page.getByText('Plan details',{exact:true}).click();await expect(page.getByText('Saved items only',{exact:false}).first()).toBeVisible();
+ await page.getByRole('button',{name:'Find pieces · up to 20 credits'}).click();
  await expect(page.getByText('Availability checked for 2 saved items: 1 sold',{exact:false})).toBeVisible();expect(ran).toBe(true);
 });

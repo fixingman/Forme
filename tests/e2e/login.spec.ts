@@ -9,8 +9,8 @@ test('the app itself is not gated when running locally without sign-in',async({p
  await page.addInitScript(()=>{localStorage.setItem('forme-onboarding-complete','1');localStorage.setItem('forme-data-mode','demo');});
  await page.goto('/discover');await expect(page).toHaveURL(/\/discover/);await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
 });
-test('auth endpoints degrade cleanly when Supabase is not configured',async({request})=>{
- const response=await request.post('/auth/login',{maxRedirects:0,headers:{origin:'http://127.0.0.1:3000'},form:{email:'a@b.co'}});
+test('auth endpoints degrade cleanly when Supabase is not configured',async({request,baseURL})=>{
+ const response=await request.post('/auth/login',{maxRedirects:0,headers:{origin:new URL(baseURL!).origin},form:{email:'a@b.co'}});
  expect(response.status()).toBe(303);expect(response.headers().location).toContain('error=unavailable');
  expect(await (await request.get('/api/profile')).json()).toEqual({sync:'disabled'});
 });

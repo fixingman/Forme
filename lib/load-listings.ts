@@ -1,6 +1,6 @@
 import {trustedSnapshot} from './domain/data-trust.mjs';
 import type {Listing} from './catalog';
-export type ListingSnapshot={quality?:ReturnType<typeof trustedSnapshot>['quality'];items:Listing[];fetchedAt:string;queries:string[];discovery?:{brands:string[];reportedCredits:number};collection?:{plannedQueries:number;collectedQueries:number;skippedSearches:number}};
+export type ListingSnapshot={lastCollectionCheckAt?:string;quality?:ReturnType<typeof trustedSnapshot>['quality'];items:Listing[];fetchedAt:string;queries:string[];discovery?:{brands:string[];reportedCredits:number};collection?:{plannedQueries:number;collectedQueries:number;skippedSearches:number}};
 const FAILED='Live listings could not be loaded. Please try again.';
 const EMPTY='No live listings are available yet. Collect and publish some, or choose demo data under Settings → Collection tools.';
 // Only a successful answer that really is JSON counts. A missing static file can come back as the app's own HTML page.

@@ -16,7 +16,9 @@ test('one global trigger opens combined draft filters without toggling or applyi
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();expect(await page.evaluate(()=>localStorage.getItem('forme-v2'))).toBe(before);
  await trigger.click();await expect(dialog.getByLabel('Women',{exact:true})).toBeChecked();await expect(dialog.getByRole('button',{name:'M',exact:true})).toHaveAttribute('aria-pressed','false');
  await dialog.getByLabel('Women',{exact:true}).uncheck();await dialog.getByRole('button',{name:'M',exact:true}).click();await dialog.getByRole('button',{name:'Apply filters',exact:true}).click();
- await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Following',exact:true}).click();await trigger.click();await expect(dialog.getByLabel('Women',{exact:true})).not.toBeChecked();await expect(dialog.getByRole('button',{name:'M',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Following',exact:true}).click();
+ // The app closes any open dialog when the page changes, so wait for the new page before opening one.
+ await expect(page).toHaveURL(/\/following$/);await trigger.click();await expect(dialog.getByLabel('Women',{exact:true})).not.toBeChecked();await expect(dialog.getByRole('button',{name:'M',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.keyboard.press('Escape');const applied=await page.evaluate(()=>localStorage.getItem('forme-v2'));await trigger.click();expect(await page.evaluate(()=>localStorage.getItem('forme-v2'))).toBe(applied);
 });
 test('mobile global filter sits beside saves and applies departments while retaining size choices in all-sizes mode',async({page})=>{

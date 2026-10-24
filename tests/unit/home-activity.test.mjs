@@ -30,6 +30,6 @@ test('explicit excluded collaborations are hidden without matching unrelated tit
 test('saved brand affinity changes ranking and dismissed items stay excluded',()=>{
  const source=[{id:1,sourceKey:'vinted:1',brand:'Auralee',title:'Cotton shirt',size:'M',age:1},{id:2,sourceKey:'vinted:2',brand:'Lemaire',title:'Wool jacket',size:'M',age:1},{id:3,sourceKey:'vinted:3',brand:'Lemaire',title:'Cotton shirt',size:'M',age:1}];
  assert.equal(recommendListings(source,preferences)[0].item.brand,'Auralee');
- const saved=recommendListings(source,{...preferences,saved:[2]});assert.equal(saved[0].item.brand,'Lemaire');assert.match(saved[0].reason,/a brand you saved/);
+ const saved=recommendListings(source,{...preferences,saved:[2]});assert.equal(saved[0].item.brand,'Lemaire');assert.match(saved[0].reason,/a brand you saved/i);
  assert.equal(recommendListings(source,{...preferences,dismissed:['vinted:2']}).some(entry=>entry.item.id===2),false);
 });

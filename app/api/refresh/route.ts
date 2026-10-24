@@ -22,8 +22,8 @@ export async function POST(request:Request){
   const raw=JSON.parse(new TextDecoder().decode(bytes));
   if(raw.action==='budget'){control.setBudget(raw.dailyCap);return Response.json(await control.status(),{headers});}
   if(!['plan','run'].includes(raw.action))throw new Error('Unknown refresh action.');
-  const {settings}=parseBackup(raw.profile);
-  if(raw.action==='plan')return Response.json(await control.plan(settings,{scope:raw.scope,limit:raw.limit}),{headers});
+  const {settings,savedListings}=parseBackup(raw.profile);
+  if(raw.action==='plan')return Response.json(await control.plan(settings,{scope:raw.scope,limit:raw.limit,savedListings}),{headers});
   if(typeof raw.id!=='string'||raw.id.length>100)throw new Error('Invalid plan ID.');
   const queued=await control.enqueue(raw.id,settings);
   if(queued.status==='queued')void drainQueue();

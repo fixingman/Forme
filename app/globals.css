@@ -43,5 +43,24 @@
 .auth-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px}
 .auth-divider::before,.auth-divider::after{content:"";flex:1;border-top:1px solid var(--line)}
 .auth-signout{text-align:center}
+
+
+
+
+.refresh-allowance{margin:0 0 20px;color:var(--muted);font-size:13px}.refresh-allowance span{opacity:.8}.refresh-options{display:grid;grid-template-columns:1fr 1fr;gap:12px}.refresh-quote{margin:20px 0}.refresh-quote h4{font-size:22px;letter-spacing:-.02em;margin:0 0 10px}.refresh-brands{font-weight:500;line-height:1.6}.refresh-quote .small{margin:8px 0;color:var(--muted)}.refresh-disclosure{padding:12px 0;border-top:1px solid var(--line);font-size:13px}.refresh-disclosure>summary{cursor:pointer;min-height:32px;display:flex;align-items:center;justify-content:space-between;list-style:none}.refresh-disclosure>summary::after{content:'+';color:var(--muted)}.refresh-disclosure[open]>summary::after{content:'−'}.refresh-disclosure>p{margin:10px 0;color:var(--muted)}.refresh-disclosure .refresh-options{padding-top:12px}.refresh-footer{display:flex;justify-content:flex-end;gap:10px;padding-top:16px}.refresh-footer .btn{min-height:44px}.refresh-tools-link{display:inline-block;font-size:12px;margin-top:14px}.refresh-message{margin-top:14px;font-size:13px}.modal.refresh-modal[open]{width:min(480px,calc(100% - 32px));padding:0;display:flex;flex-direction:column;max-height:calc(100dvh - 48px);overflow:hidden}.refresh-modal .modalhead{padding:22px 24px 16px;margin:0;flex-shrink:0}.refresh-modal .modalhead h2{font-size:22px}.refresh-modal .refresh-form{display:flex;flex-direction:column;min-height:0}.refresh-modal .refresh-body{padding:0 24px 12px;overflow-y:auto;overscroll-behavior:contain}.refresh-modal .refresh-quote{margin-top:0}.refresh-modal .refresh-footer{border-top:1px solid var(--line);padding:16px 24px;flex-shrink:0;background:var(--surface)}.refresh-modal .refresh-footer .btn:first-child{margin-right:auto}.tools-disclosure{padding:18px 0;border-top:1px solid var(--line)}.tools-disclosure>summary{font-size:15px;cursor:pointer;padding:8px 0}.tools-disclosure>.panel,.tools-disclosure>div>.panel{border:0;padding:20px 0;margin:0}
+@media(max-width:720px){.modal.refresh-modal[open]{width:100%;max-width:none;max-height:calc(100dvh - 24px);margin:auto 0 0;border-radius:16px 16px 0 0}.refresh-modal .modalhead{padding:20px 20px 16px}.refresh-modal .refresh-body{padding:0 20px 12px}.refresh-modal .refresh-footer{padding:14px 20px max(14px,env(safe-area-inset-bottom))}.refresh-modal .refresh-footer .btn{font-size:13px;padding:11px 14px}.refresh-options{grid-template-columns:1fr}}
+/* Top-bar refresh: icon plus a ticking time since the latest check. Paid collection stays a separate, explicit dialog. */
+.topbar-refresh{display:flex;align-items:center}
+.topright .refresh-chip{gap:6px;min-width:0;min-height:38px;padding:8px 10px;border:1px solid var(--line);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.topright .refresh-chip svg{width:15px;height:15px;flex-shrink:0}
+.topright .refresh-chip:not(.static){color:var(--accent)}
+.topright .refresh-chip.static{cursor:default}
+.refresh-age{display:inline-block;min-width:2.1ch;text-align:left;font-size:13px}
+
+
+.listing-feedback{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative}.listing-feedback>.textbutton{font-size:12px;min-height:38px;padding:6px 0}.listing-feedback .feedback-more{border:0;width:38px;height:38px;min-height:38px}.feedback-more .lucide{width:19px;height:19px}.feedback-notice{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:20px;background:var(--soft);font-size:13px}.feedback-notice>span{flex:1;min-width:140px}.feedback-notice>.icon-button{border:0;width:32px;height:32px;min-height:32px}.feedback-notice>.icon-button .lucide{width:16px;height:16px}.detail .listing-feedback{justify-content:flex-start;margin:10px 0}.detail .listing-feedback>.textbutton{margin-right:12px}
 .photo-fallback-note{max-width:22ch;line-height:1.4}
 .photo-fallback-link{color:var(--accent);font-weight:500;text-decoration:underline;text-underline-offset:3px;min-height:44px;display:inline-flex;align-items:center}
+
+
+.brand-feedback-modal p,.brand-feedback-modal h2{overflow-wrap:anywhere}.brand-feedback-modal .inline{flex-wrap:wrap}.brand-feedback-modal .btn{white-space:normal;overflow-wrap:anywhere;max-width:100%}

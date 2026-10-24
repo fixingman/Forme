@@ -30,8 +30,10 @@ test('publishing writes metadata, upserts in chunks and prunes only older rows',
  assert.equal(db.state.meta.fetched_at,trusted.fetchedAt);assert.equal(db.state.meta.published_at,now.toISOString());
 });
 test('a published snapshot reads back through the hosted reader and passes the same trust checks',async()=>{
- const db=fakeDb();await publishSnapshot({supabase:db,snapshot:fixture,chunk:7});
+ const lastCollectionCheckAt='2026-10-23T10:00:00Z';
+ const db=fakeDb();await publishSnapshot({supabase:db,snapshot:{...fixture,lastCollectionCheckAt},chunk:7});
  const back=await readPublishedSnapshot(db);const trusted=trustedSnapshot(fixture);
+ assert.equal(back.lastCollectionCheckAt,lastCollectionCheckAt);
  assert.equal(back.items.length,trusted.items.length);assert.equal(back.fetchedAt,new Date(trusted.fetchedAt).toISOString());
  assert.deepEqual(trustedSnapshot(back).items.map(i=>i.sourceKey).sort(),trusted.items.map(i=>i.sourceKey).sort());
  assert.equal(await readPublishedSnapshot(fakeDb()),null);

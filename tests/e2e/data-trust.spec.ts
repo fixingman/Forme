@@ -13,7 +13,7 @@ test('bad prices and source links are excluded; item-specific stale data and unk
  await page.goto('/following');const card=page.getByTestId(`listing-${first.id}`);await expect(card).toBeVisible();await expect(card).toContainText('Price last observed over 7 days ago');await expect(page.locator('.product')).toHaveCount(1);
  await card.getByRole('link',{name:`View ${first.brand} ${first.title}`,exact:true}).click();
  await expect(page.getByText('Availability unknown.',{exact:false})).toBeVisible();await expect(page.getByText('Price is the last observed item price',{exact:false})).toBeVisible();
- await page.goto('/tools');const report=page.locator('#data-quality');await expect(report).toBeVisible();await expect(report.locator('div').filter({has:page.locator('dt',{hasText:'Excluded or duplicate records'})}).locator('dd')).toHaveText('2');
+ await page.goto('/tools');await page.locator('summary').filter({hasText:/^Data quality$/}).click();const report=page.locator('#data-quality');await expect(report).toBeVisible();await expect(report.locator('div').filter({has:page.locator('dt',{hasText:'Excluded or duplicate records'})}).locator('dd')).toHaveText('2');
 });
 test('reported sold pieces leave shopping feeds but remain saved with their status and backup provenance',async({page})=>{
  await page.addInitScript(id=>{localStorage.setItem('forme-v2',JSON.stringify({following:['Our Legacy'],saved:[id]}));},first.id);

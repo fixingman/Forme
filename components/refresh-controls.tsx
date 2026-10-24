@@ -1,30 +1,82 @@
 'use client';
-import {useEffect,useState} from 'react';
+import Link from 'next/link';
+import {useEffect,useRef,useState} from 'react';
 import {createBackup} from '@/lib/settings-backup';
 import type {Preferences} from '@/lib/preferences';
-type Run={id:string;status:string;reserved:number;reported:number;created_at:string;result?:{accepted?:number;eligible?:number;pendingTranslations?:number;checked?:number;available?:number;sold?:number;reserved?:number;unavailable?:number;error?:string}|null};
+import type {Listing} from '@/lib/catalog';
+
+type Outcome={accepted?:number;eligible?:number;matchingPreferences?:number;pendingTranslations?:number;checked?:number;available?:number;sold?:number;reserved?:number;unavailable?:number;photosUpdated?:number};
+type Run={id:string;status:string;reserved:number;reported:number;created_at:string;result?:(Outcome&{error?:string})|null};
 type Status={day:string;dailyCap:number;reservedCredits:number;reportedCredits:number;remainingCredits:number;providerAvailable:boolean;running:boolean;runs:Run[]};
 type Plan={id:string;maximumCredits:number;maximumItems:number;exactBrandJobs:number;department:string;sizeFiltering:string;translation:string;coverage:string;expiresAt:string;jobs:{brand:string;brandId:string|null}[]};
-type Outcome={accepted?:number;eligible?:number;matchingPreferences?:number;pendingTranslations?:number;checked?:number;available?:number;sold?:number;reserved?:number;unavailable?:number;photosUpdated?:number};
-const outcomeMessage=(value:Outcome,scope:string)=>value.checked!==undefined?`Availability checked for ${value.checked} saved item${value.checked===1?'':'s'}: ${value.sold??0} sold, ${value.unavailable??0} removed or hidden, ${value.reserved??0} reserved, ${value.available??0} still available.${value.photosUpdated?` ${value.photosUpdated} photo link${value.photosUpdated===1?'':'s'} refreshed.`:''}`:`Refresh complete: ${value.accepted??0} validated listings, ${scope==='following'?`${value.matchingPreferences??0} matches for your feeds`:`${value.eligible??0} eligible Discover results`}.${value.pendingTranslations?` ${value.pendingTranslations} titles still need English review.`:''}`;
-export default function RefreshControls({settings,refreshed}:{settings:Preferences;refreshed:()=>Promise<void>}){
- const [status,setStatus]=useState<Status|null>(null),[cap,setCap]=useState(15),[scope,setScope]=useState('discover'),[limit,setLimit]=useState(3),[plan,setPlan]=useState<Plan|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[watching,setWatching]=useState<string|null>(null);
- const fingerprint=JSON.stringify(settings);
- async function load(){try{const response=await fetch('/api/refresh',{cache:'no-store'});if(!response.ok)throw new Error('Refresh controls are unavailable. Your existing collection is still available.');const value:Status=await response.json();setStatus(value);return value;}catch(error){setMessage((error as Error).message);return null;}}
- useEffect(()=>{void load().then(value=>{if(value)setCap(value.dailyCap);});},[]);
- useEffect(()=>{setPlan(null);},[fingerprint,scope,limit]);
- useEffect(()=>{if(!busy&&!status?.running)return;const timer=setInterval(()=>void load(),3000);return()=>clearInterval(timer);},[busy,status?.running]);
- useEffect(()=>{if(!watching||!status)return;const run=status.runs.find(row=>row.id===watching);if(!run||['queued','running'].includes(run.status))return;setWatching(null);if(run.status==='complete'){setMessage(outcomeMessage(run.result??{},scope));void refreshed();}else setMessage(run.result?.error??'The refresh did not complete. Preview a new plan before trying again.');},[watching,status]);
- async function action(action:'budget'|'plan'|'run'){
-  setBusy(true);setMessage('');
+const outcomeMessage=(value:Outcome,scope:string)=>value.checked!==undefined?`Availability checked for ${value.checked} saved item${value.checked===1?'':'s'}: ${value.sold??0} sold, ${value.unavailable??0} removed or hidden, ${value.reserved??0} reserved, ${value.available??0} still available.${value.photosUpdated?` ${value.photosUpdated} photo link${value.photosUpdated===1?'':'s'} refreshed.`:''}`:`Refresh complete: ${value.accepted??0} validated listings, ${scope!=='discover'?`${value.matchingPreferences??0} matches for your feeds`:`${value.eligible??0} eligible Discover results`}.${value.pendingTranslations?` ${value.pendingTranslations} titles still need English review.`:''}`;
+
+export default function RefreshControls({settings,savedListings=[],refreshed,compact=false,initialScope='discover',close}:{settings:Preferences;savedListings?:Listing[];refreshed:()=>Promise<void>;compact?:boolean;initialScope?:string;close?:()=>void}){
+ const [status,setStatus]=useState<Status|null>(null),[cap,setCap]=useState(15),[scope,setScope]=useState(initialScope),[limit,setLimit]=useState(3),[plan,setPlan]=useState<Plan|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[watching,setWatching]=useState<string|null>(null),[finished,setFinished]=useState(false);
+ const fingerprint=JSON.stringify(settings),autoKey=JSON.stringify([fingerprint,scope,limit]);
+ const lastAutoKey=useRef(''),quoteVersion=useRef(0),working=useRef(false);
+ async function load(){
   try{
-   const response=await fetch('/api/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(action==='budget'?{action,dailyCap:cap}:{action,profile:createBackup(settings,{mode:'live',collapsed:false},[]),scope,limit,id:plan?.id})});
-   const value=await response.json();if(!response.ok)throw new Error(value.error??'Refresh failed.');
-   if(action==='budget'){setStatus(value);setMessage('Daily cap saved. No collection started.');}
-   if(action==='plan'){setPlan(value);await load();setMessage('Plan ready. No provider requests sent.');}
-   if(action==='run'&&['queued','running'].includes(value.status)){setWatching(value.id);setPlan(null);setMessage('Refresh started in the background. You can leave this page; progress updates here.');await load();return;}
-   if(action==='run'){if(value.status!=='complete')throw new Error(value.error??'The previous run did not complete. Preview a new plan before trying again.');setMessage(outcomeMessage(value,scope));setPlan(null);await refreshed();}
-  }catch(error){setMessage((error as Error).message);}finally{if(action==='run')await load();setBusy(false);}
+   const response=await fetch('/api/refresh',{cache:'no-store'});
+   if(!response.ok)throw new Error(response.status===403?'Collection is available on your computer only.':'Collection is unavailable right now. You can keep browsing.');
+   const value:Status=await response.json();setStatus(value);return value;
+  }catch(error){setMessage((error as Error).message);return null;}
  }
- return <section className="panel" aria-labelledby="refresh-title"><h3 id="refresh-title">Refresh listings</h3><p>Preview a small ScrapeBadger collection before spending credits. Refreshes only run when you choose Run refresh.</p>{status&&<><p className="refresh-budget"><strong>{status.remainingCredits} credits available</strong> · {status.reportedCredits} reported charged · {status.reservedCredits} reserved against a {status.dailyCap}-credit daily cap</p><p className="small">Resets at midnight UTC. This computer’s ledger includes earlier collections; it is not your provider account balance. Reservations stay counted after failed or uncertain calls.</p></>}<div className="refresh-fields"><div className="field"><label htmlFor="daily-credit-cap">Daily credit cap</label><input id="daily-credit-cap" type="number" min={5} max={100} step={1} value={cap} disabled={busy||status?.running} onChange={event=>setCap(Number(event.target.value))}/></div><button className="btn light" disabled={!status||busy||status.running||!Number.isInteger(cap)||cap<5||cap>100} onClick={()=>void action('budget')}>Save daily cap</button></div><div className="two"><div className="field"><label htmlFor="refresh-scope">Refresh feed</label><select id="refresh-scope" value={scope} disabled={busy||status?.running} onChange={event=>setScope(event.target.value)}><option value="discover">Discover related brands</option><option value="following">Following brands</option><option value="availability">Saved items’ availability</option></select></div><div className="field"><label htmlFor="refresh-count">{scope==='availability'?'Saved items to check':'Brand searches'}</label><select id="refresh-count" value={limit} disabled={busy||status?.running} onChange={event=>setLimit(Number(event.target.value))}>{[1,2,3].map(value=><option key={value} value={value}>{value} · up to {value*(scope==='availability'?10:5)} credits / {value*(scope==='availability'?1:20)} {scope==='availability'?(value===1?'item':'items'):'results'}</option>)}</select></div></div><button className="btn light" disabled={!status||busy||status.running} onClick={()=>void action('plan')}>Preview refresh · free</button>{plan&&<div className="notice refresh-plan"><h4>Up to {plan.maximumCredits} credits · {plan.maximumItems} results</h4><p>{plan.jobs.map(job=>job.brand).join(' · ')||(scope==='availability'?'No saved items are due for a check.':'No eligible brands.')}</p><p>{scope==='availability'?plan.department:`${plan.exactBrandJobs} of ${plan.jobs.length} searches use exact brand filters. ${plan.department}.`}</p><p>{plan.sizeFiltering}</p><p className="small">{plan.coverage} {plan.translation}</p>{!status?.providerAvailable&&<p>Provider key unavailable. Refresh is disabled.</p>}{status&&plan.maximumCredits>status.remainingCredits&&<p>Daily cap reached for this plan. Choose fewer searches, raise the cap explicitly, or wait for tomorrow.</p>}<button className="btn" disabled={busy||status?.running||!status?.providerAvailable||!plan.jobs.length||plan.maximumCredits>(status?.remainingCredits??0)} onClick={()=>void action('run')}>Run refresh · up to {plan.maximumCredits} credits</button></div>}{(busy||status?.running)&&<p role="status">Working… Refreshes can take a few minutes. Leave this page open; duplicate runs are blocked.</p>}{message&&<p role="status">{message}</p>}{status&&status.runs.length>0&&<details><summary>Recent refreshes</summary><ul>{status.runs.map(run=><li key={run.id}>{new Date(run.created_at).toLocaleString()} · {run.status} · {run.reported} reported / {run.reserved} reserved credits{run.result?.error?` · ${run.result.error}`:''}</li>)}</ul></details>}</section>;
+ useEffect(()=>{void load().then(value=>{if(value)setCap(value.dailyCap);});},[]);
+ useEffect(()=>{quoteVersion.current++;setPlan(null);setFinished(false);},[fingerprint,scope,limit]);
+ // Opening this dialog obtains a free quote only; a run always needs the separate cost-labelled confirmation.
+ useEffect(()=>{
+  if(compact&&status&&!status.running&&!busy&&lastAutoKey.current!==autoKey){lastAutoKey.current=autoKey;void action('plan');}
+ },[compact,!!status,status?.running,busy,autoKey]);
+ useEffect(()=>{if(!busy&&!status?.running&&!watching)return;const timer=setInterval(()=>void load(),3000);return()=>clearInterval(timer);},[busy,status?.running,watching]);
+ useEffect(()=>{
+  if(!watching||!status)return;
+  const run=status.runs.find(row=>row.id===watching);if(!run||['queued','running'].includes(run.status))return;
+  setWatching(null);setFinished(true);
+  if(run.status==='complete'){setMessage(outcomeMessage(run.result??{},scope));void refreshed().catch(()=>setMessage('Collection finished. Your feed could not be reloaded yet.'));}
+  else setMessage(run.result?.error??'The collection stopped. Check Budget and history before starting another run.');
+ },[watching,status]);
+ async function action(kind:'budget'|'plan'|'run'){
+  if(working.current)return;
+  working.current=true;setBusy(true);setMessage('');
+  const version=quoteVersion.current;
+  try{
+   const response=await fetch('/api/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(kind==='budget'?{action:kind,dailyCap:cap}:{action:kind,profile:createBackup(settings,{mode:'live',collapsed:false},savedListings),scope,limit,id:plan?.id})});
+   const value=await response.json();if(!response.ok)throw new Error(value.error??'Collection is unavailable. Try a new cost preview.');
+   if(kind==='budget'){setStatus(value);setMessage('Daily cap saved. No collection started.');}
+   if(kind==='plan'&&version===quoteVersion.current){setPlan(value);setFinished(false);await load();}
+   if(kind==='run'&&['queued','running'].includes(value.status)){setWatching(value.id);setPlan(null);setMessage('Refresh started in the background. You can close this window.');await load();return;}
+   if(kind==='run'){
+    setPlan(null);setFinished(true);
+    if(value.status!=='complete')throw new Error(value.error??'The previous run did not complete. Check Budget and history before starting another run.');
+    setMessage(outcomeMessage(value,scope));try{await refreshed();}catch{setMessage('Collection finished. Your feed could not be reloaded yet.');}
+   }
+  }catch(error){if(kind!=='plan'||version===quoteVersion.current)setMessage((error as Error).message);if(kind==='run'){setPlan(null);setFinished(true);}}
+  finally{if(kind==='run')await load();working.current=false;setBusy(false);}
+ }
+ const running=!!status?.running||!!watching,disabled=busy||running;
+ const options=<div className="refresh-options"><div className="field"><label htmlFor="refresh-scope">Refresh feed</label><select id="refresh-scope" value={scope} disabled={disabled} onChange={event=>setScope(event.target.value)}><option value="personal">Your edit · Following and Discover</option><option value="discover">Discover</option><option value="following">Following</option><option value="availability">Saved items’ availability</option></select></div><div className="field"><label htmlFor="refresh-count">{scope==='availability'?'Saved items to check':'Brand searches'}</label><select id="refresh-count" value={limit} disabled={disabled} onChange={event=>setLimit(Number(event.target.value))}>{[1,2,3].map(value=><option key={value} value={value}>{value} · up to {value*(scope==='availability'?10:5)} credits</option>)}</select></div></div>;
+ const technical=plan&&<details className="refresh-disclosure"><summary>Plan details</summary><p>{scope==='availability'?plan.department:`${plan.exactBrandJobs} of ${plan.jobs.length} searches use exact brand filters. ${plan.department}.`}</p><p>{plan.sizeFiltering}</p><p>{plan.coverage} {plan.translation}</p></details>;
+ const budget=<details className="refresh-disclosure refresh-budget-details"><summary>Budget and history</summary>{status&&<p>{status.reportedCredits} reported charged · {status.reservedCredits} reserved · {status.dailyCap}-credit daily cap. Resets at midnight UTC. This is your local allowance, not your provider balance. Uncertain calls keep their reservations.</p>}<div className="refresh-fields"><div className="field"><label htmlFor="daily-credit-cap">Daily credit cap</label><input id="daily-credit-cap" type="number" min={5} max={100} step={1} value={cap} disabled={disabled} onChange={event=>setCap(Number(event.target.value))}/></div><button className="btn light" disabled={!status||disabled||!Number.isInteger(cap)||cap<5||cap>100} onClick={()=>void action('budget')}>Save daily cap</button></div>{status&&status.runs.length>0&&<ul>{status.runs.map(run=><li key={run.id}>{new Date(run.created_at).toLocaleString()} · {run.status} · {run.reported} reported / {run.reserved} reserved credits{run.result?.error?` · ${run.result.error}`:''}</li>)}</ul>}</details>;
+ const canRun=!!plan&&!disabled&&!!status?.providerAvailable&&plan.jobs.length>0&&plan.maximumCredits<=status.remainingCredits;
+ const confirmation=plan&&plan.jobs.length>0&&!finished&&<button className="btn" disabled={!canRun} onClick={()=>void action('run')}>Find pieces · up to {plan.maximumCredits} credits</button>;
+ return <section className={compact?'refresh-form':'panel refresh-form'} aria-label={compact?'Collection cost preview':undefined} aria-labelledby={compact?undefined:'refresh-title'}>
+  <div className="refresh-body">
+   {!compact&&<><h3 id="refresh-title">Refresh listings</h3><p>Find new pieces for your edit. Review the cost before collecting.</p></>}
+   {status&&<p className="refresh-allowance">{status.remainingCredits} credits left today <span>of {status.dailyCap}</span></p>}
+   {running?<p role="status">Collecting… You can close this window; collection continues in the background.</p>:<>
+    {!compact&&options}
+    {!compact&&!plan&&<button className="btn light" disabled={!status||disabled} onClick={()=>void action('plan')}>See refresh cost</button>}
+    {compact&&busy&&!plan&&!finished&&<p role="status">Checking the cost…</p>}
+    {plan&&<div className="refresh-quote"><h4>Up to {plan.maximumCredits} credits</h4><p className="refresh-brands">{plan.jobs.map(job=>job.brand).join(' · ')||(scope==='availability'?'No saved items need a check.':'No brands to search. Add a style, follow a brand or save a piece first.')}</p>{plan.jobs.length>0&&<p className="small">Up to {plan.maximumItems} {scope==='availability'?'saved items checked':'results'}. {scope==='availability'?'':'Your sizes and departments still apply.'}</p>}{!status?.providerAvailable&&<p>Collection isn’t connected on this computer. You can keep browsing.</p>}{status&&plan.maximumCredits>status.remainingCredits&&<p role="status">This is over today’s remaining allowance. Choose fewer searches or come back tomorrow.</p>}</div>}
+    {compact&&<details className="refresh-disclosure"><summary>Search options</summary>{options}</details>}
+    {technical}
+   </>}
+   {message&&<p className="refresh-message" role="status">{message}</p>}
+   {compact&&!busy&&!running&&!plan&&!finished&&message&&<button className="btn light" onClick={()=>void load().then(value=>{if(value&&!value.running)void action('plan');})}>Try cost preview again</button>}
+   {!compact&&budget}
+   {compact&&<Link className="textlink refresh-tools-link" href="/tools" onClick={close}>Budget and history in Collection tools</Link>}
+  </div>
+  <div className="refresh-footer">{compact&&<button className="btn light" autoFocus onClick={close}>{finished||running?'Done':'Cancel'}</button>}{confirmation}</div>
+ </section>;
 }
