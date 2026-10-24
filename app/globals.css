@@ -92,4 +92,31 @@
 .toast-close svg{width:16px;height:16px}
 .toast-undo:hover,.toast-close:hover{opacity:1;background:#ffffff1f}
 .toast-undo:focus-visible,.toast-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* Item page details: a clear hierarchy (title block, key facts, then provenance) instead of a stack of same-weight grey lines. */
+.detail .eyebrow{font-size:12px;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.detail h1{font-size:28px;line-height:1.15;letter-spacing:-.01em;font-weight:650;margin:8px 0 4px}
+.detail h2{font-size:17px;line-height:1.4;font-weight:400;color:#555f51;margin:0 0 12px}
+.translation-note{font-size:12px;line-height:1.5;color:var(--muted);margin:0 0 6px}
+.original-listing{margin:0 0 4px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.original-listing>summary{display:inline-flex;align-items:center;gap:6px;min-height:32px;cursor:pointer;list-style:none;font-size:13px;font-weight:500;color:var(--accent)}
+.original-listing>summary::-webkit-details-marker{display:none}
+.original-listing>summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+.original-listing[open]>summary::before{transform:rotate(45deg)}
+.original-listing>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.original-listing>p{font-size:13px;line-height:1.5;margin:6px 0 0}
+.facts{display:flex;flex-wrap:wrap;gap:12px 32px;margin:22px 0 0}
+.facts dt{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:3px 0 0;font-size:15px;font-weight:500;color:var(--ink);line-height:1.35}
+.detail .facts+.detail-price{margin-top:18px}
+.about{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
+.about h3{margin:0 0 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.about dl{display:grid;grid-template-columns:minmax(76px,max-content) 1fr;gap:12px 20px;margin:0}
+.about dl>div{display:contents}
+.about dt{font-size:13px;color:var(--muted);line-height:1.45;padding-top:1px}
+.about dd{margin:0;line-height:1.45}
+.about .v{display:block;font-size:14px;font-weight:500;color:var(--ink)}
+.about .s{display:block;margin-top:1px;font-size:12px;color:var(--muted)}
+@media(max-width:720px){.detail h1{font-size:26px}.facts{gap:12px 28px}.about dl{grid-template-columns:minmax(70px,max-content) 1fr;gap:12px 16px}}
+/* Very narrow phones (320-350px): the top bar would overflow, so My sizes shows its icon only (its accessible name is unchanged). */
+@media(max-width:350px){.topbar{padding:0 14px}.topright{gap:6px}.topright .global-filter-trigger>span{display:none}.topright .global-filter-trigger{min-width:44px;justify-content:center}}
 

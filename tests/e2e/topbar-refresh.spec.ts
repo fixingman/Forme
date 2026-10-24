@@ -58,7 +58,7 @@ test('it is on every page, opens the same free-preview dialog in place, and neve
  await expect(dialog.getByRole('button',{name:/Find pieces · up to 5 credits/})).toBeEnabled();expect(plans).toBe(1);expect(runs).toBe(0);
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);expect(runs).toBe(0);await expect(control(page)).toBeFocused();
 });
-for(const [name,size] of [['iPhone',{width:390,height:844}],['small phone',{width:360,height:740}],['tablet',{width:768,height:1024}],['desktop',{width:1280,height:800}]] as const)
+for(const [name,size] of [['iPhone',{width:390,height:844}],['small phone',{width:360,height:740}],['very small phone',{width:340,height:700}],['narrowest phone',{width:320,height:640}],['tablet',{width:768,height:1024}],['desktop',{width:1280,height:800}]] as const)
 test(`the top bar fits without overflow or wrapping on ${name}`,async({page})=>{
  // The widest realistic label (two digits plus a unit) is the hard case for a narrow bar.
  await page.setViewportSize(size);await at(page,'/',59*60_000);
@@ -68,5 +68,6 @@ test(`the top bar fits without overflow or wrapping on ${name}`,async({page})=>{
  const boxes=await Promise.all([control(page),page.getByRole('button',{name:'My sizes and departments',exact:true}),page.getByRole('link',{name:/Saved items/})].map(l=>l.boundingBox()));
  for(const b of boxes){expect(b!.x).toBeGreaterThanOrEqual(0);expect(b!.x+b!.width).toBeLessThanOrEqual(size.width);}
  for(let i=1;i<boxes.length;i++)expect(boxes[i]!.x).toBeGreaterThanOrEqual(boxes[i-1]!.x+boxes[i-1]!.width-0.5);
+ await expect(page.getByRole('button',{name:'My sizes and departments',exact:true})).toBeVisible();
  if(size.width<=390){const word=await page.locator('.mobile-wordmark').boundingBox();expect(boxes[0]!.x).toBeGreaterThanOrEqual(word!.x+word!.width);}
 });

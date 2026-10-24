@@ -50,7 +50,7 @@ test('live brand exclusions and mobile width remain consistent',async({page})=>{
 test('English titles and conditions expose original listing text',async({page})=>{
  await page.goto('/items/10447404161');
  await expect(page.getByRole('heading',{name:'Acne leather jacket',exact:true})).toBeVisible();
- await expect(page.locator('.detail').getByText('Size',{exact:false}).first()).toContainText('Good');
+ await expect(page.locator('.detail .facts')).toContainText('Size');await expect(page.locator('.detail .facts')).toContainText('Good');
  await page.getByText('Show original listing text',{exact:true}).click();
  await expect(page.locator('.original-listing').getByText('Acne skinnjacka',{exact:true})).toBeVisible();
  await expect(page.locator('.original-listing')).toContainText('Condition: Bra');
