@@ -83,15 +83,22 @@
 .brand-pref-note{margin:0;font-size:12px;line-height:1.5;color:var(--muted)}
 .brand-pref-note a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 @media(max-width:720px){.segmented{display:flex;width:100%}.segmented button{flex:1;padding-left:8px;padding-right:8px}}
-/* Undo toast: message, a text-style Undo, and a close button, on the same dark surface as the other toasts. */
-.toast-action{display:flex;align-items:center;gap:6px 14px}
-.toast-action>span{flex:1;min-width:0}
-.toast-undo,.toast-close{background:transparent;border:0;color:#fff;font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
-.toast-undo{min-height:44px;margin:-10px 0;padding:0 4px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.toast-close{width:36px;height:36px;margin:-8px -10px -8px 0;border-radius:6px;opacity:.8}
-.toast-close svg{width:16px;height:16px}
-.toast-undo:hover,.toast-close:hover{opacity:1;background:#ffffff1f}
-.toast-undo:focus-visible,.toast-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* Undo toast: the dark toast surface with a message, a quiet Undo, a small seconds count and a close button.
+   A hairline bar drains along the bottom edge over the toast's lifetime and freezes while the countdown is paused. */
+.toast-action{position:relative;overflow:hidden;display:flex;align-items:center;gap:4px 10px;padding:10px 8px 13px 16px;min-width:min(340px,100%)}
+.toast-message{flex:1;min-width:0}
+.toast-undo,.toast-close{background:transparent;border:0;color:#fff;font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
+.toast-undo{min-height:44px;margin:-8px 0;padding:0 10px;font-weight:600;letter-spacing:.01em}
+.toast-close{width:36px;height:36px;margin:-4px 0;opacity:.7}
+.toast-close svg{width:15px;height:15px}
+.toast-undo:hover,.toast-close:hover{background:#ffffff1f}
+.toast-close:hover{opacity:1}
+.toast-undo:focus-visible,.toast-close:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+.toast-count{min-width:2ch;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;color:#ffffffa6}
+.toast-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:#ffffffb8;transform-origin:left center;animation:toast-drain linear forwards}
+.toast-action.is-paused .toast-bar{animation-play-state:paused}
+@keyframes toast-drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media(prefers-reduced-motion:reduce){.toast-bar{display:none}}
 /* Item page details: a clear hierarchy (title block, key facts, then provenance) instead of a stack of same-weight grey lines. */
 .detail .eyebrow{font-size:12px;letter-spacing:.01em;font-variant-numeric:tabular-nums}
 .detail h1{font-size:28px;line-height:1.15;letter-spacing:-.01em;font-weight:650;margin:8px 0 4px}

@@ -113,6 +113,8 @@ test.describe('item page: one action row and one brand control',()=>{
 test.describe('Undo toast',()=>{
  const toast=(page:import('@playwright/test').Page)=>page.locator('.toast-action');
  const hide=(page:import('@playwright/test').Page)=>page.getByRole('button',{name:'Not for me: Cotton shirt',exact:true}).click();
+ // Playwright's fake clock keeps flowing in real time until paused. Freezing it once the toast is up makes every runFor() below exact.
+ const freeze=async(page:import('@playwright/test').Page)=>{await expect(toast(page)).toBeVisible();await page.clock.pauseAt(new Date((await page.evaluate(()=>Date.now()))+300));};  // up to ~300ms of the countdown may already have run
  test('"Not for me" shows a bottom toast with Undo, not a banner in the page',async({page})=>{
   await page.goto('/items/92001');await hide(page);
   await expect(toast(page)).toBeVisible();await expect(toast(page)).toContainText('Piece hidden from your feeds.');
@@ -121,23 +123,60 @@ test.describe('Undo toast',()=>{
   expect(box.y).toBeGreaterThan(view.height/2);expect(await page.evaluate(()=>getComputedStyle(document.querySelector('.toast-stack')!).position)).toBe('fixed');
   await expect(toast(page).getByRole('button',{name:'Undo Not for me',exact:true})).toBeVisible();await expect(toast(page).getByRole('button',{name:'Dismiss feedback notice',exact:true})).toBeVisible();
  });
- test('it dismisses itself after about six seconds',async({page})=>{
-  await page.clock.install();await page.goto('/items/92001');await hide(page);await expect(toast(page)).toBeVisible();
-  await page.clock.runFor(5_000);await expect(toast(page)).toBeVisible();
+ test('it dismisses itself after four seconds, not longer',async({page})=>{
+  await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
+  await page.clock.runFor(3_000);await expect(toast(page)).toBeVisible();
   await page.clock.runFor(1_500);await expect(toast(page)).toHaveCount(0);
   // the piece stays hidden, and can still be restored from the page
   await expect(page.getByRole('button',{name:'Restore Cotton shirt',exact:true})).toBeVisible();
  });
- test('it waits while the pointer is over it, then goes after a fresh interval',async({page})=>{
-  await page.clock.install();await page.goto('/items/92001');await hide(page);await expect(toast(page)).toBeVisible();
-  await toast(page).hover();await page.clock.runFor(30_000);await expect(toast(page)).toBeVisible();
-  await page.mouse.move(5,5);await page.clock.runFor(5_000);await expect(toast(page)).toBeVisible();
+ test('a small seconds count and a hairline bar show how long is left',async({page})=>{
+  await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
+  const count=toast(page).locator('.toast-count'),bar=toast(page).locator('.toast-bar');
+  await expect(count).toHaveText('4s');await expect(bar).toHaveCount(1);
+  expect(await bar.evaluate(e=>getComputedStyle(e).animationDuration)).toBe('4s');expect(await bar.evaluate(e=>getComputedStyle(e).animationName)).toBe('toast-drain');
+  expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(3);
+  await page.clock.runFor(1_100);await expect(count).toHaveText('3s');await page.clock.runFor(1_000);await expect(count).toHaveText('2s');await page.clock.runFor(1_000);await expect(count).toHaveText('1s');
+  // the count and bar are decoration for the eye; screen readers get the message and the two buttons only
+  await expect(count).toHaveAttribute('aria-hidden','true');await expect(bar).toHaveAttribute('aria-hidden','true');
+  await expect(toast(page)).toHaveAccessibleName('');await expect(toast(page).getByRole('button')).toHaveCount(2);
+ });
+ test('the bar sits inside the toast along its bottom edge',async({page})=>{
+  await page.goto('/items/92001');await hide(page);
+  const [t,b]=await Promise.all([toast(page).boundingBox(),toast(page).locator('.toast-bar').boundingBox()]);
+  expect(b!.x).toBeGreaterThanOrEqual(t!.x-0.5);expect(b!.x+b!.width).toBeLessThanOrEqual(t!.x+t!.width+0.5);expect(b!.y+b!.height).toBeLessThanOrEqual(t!.y+t!.height+0.5);expect(b!.y).toBeGreaterThan(t!.y+t!.height-4);
+  expect(t!.height).toBeLessThanOrEqual(60);
+ });
+ test('hovering freezes both the countdown and the bar, and leaving resumes from where it stopped',async({page})=>{
+  await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
+  const bar=toast(page).locator('.toast-bar'),count=toast(page).locator('.toast-count');
+  await page.clock.runFor(1_000);await toast(page).hover();
+  await expect(toast(page)).toHaveClass(/is-paused/);expect(await bar.evaluate(e=>getComputedStyle(e).animationPlayState)).toBe('paused');
+  await page.clock.runFor(30_000);await expect(toast(page)).toBeVisible();await expect(count).toHaveText('3s');
+  await page.mouse.move(5,5);await expect(toast(page)).not.toHaveClass(/is-paused/);expect(await bar.evaluate(e=>getComputedStyle(e).animationPlayState)).toBe('running');
+  // about three seconds were left, so it must not restart a full four
+  await page.clock.runFor(2_000);await expect(toast(page)).toBeVisible();
   await page.clock.runFor(1_500);await expect(toast(page)).toHaveCount(0);
  });
- test('it waits while a control inside it has keyboard focus',async({page})=>{
-  await page.clock.install();await page.goto('/items/92001');await hide(page);
-  await toast(page).getByRole('button',{name:'Undo Not for me',exact:true}).focus();await page.clock.runFor(30_000);await expect(toast(page)).toBeVisible();
-  await page.evaluate(()=>(document.activeElement as HTMLElement).blur());await page.clock.runFor(6_500);await expect(toast(page)).toHaveCount(0);
+ test('keyboard focus inside it also pauses, and moving between its two buttons does not release the pause',async({page})=>{
+  await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
+  const undo=toast(page).getByRole('button',{name:'Undo Not for me',exact:true}),close=toast(page).getByRole('button',{name:'Dismiss feedback notice',exact:true});
+  await undo.focus();await expect(toast(page)).toHaveClass(/is-paused/);await page.clock.runFor(20_000);await expect(toast(page)).toBeVisible();
+  await close.focus();await expect(toast(page)).toHaveClass(/is-paused/);await page.clock.runFor(20_000);await expect(toast(page)).toBeVisible();
+  await page.evaluate(()=>(document.activeElement as HTMLElement).blur());await expect(toast(page)).not.toHaveClass(/is-paused/);
+  await page.clock.runFor(4_500);await expect(toast(page)).toHaveCount(0);
+ });
+ test('with reduced motion the bar is hidden but the seconds count remains and it still dismisses',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
+  await expect(toast(page).locator('.toast-bar')).toBeHidden();await expect(toast(page).locator('.toast-count')).toBeVisible();
+  await page.clock.runFor(4_500);await expect(toast(page)).toHaveCount(0);
+ });
+ test('hiding another piece while it is showing starts a fresh countdown for the new message',async({page})=>{
+  await page.clock.install();await page.goto('/following');
+  const buttons=page.getByRole('button',{name:/^Not for me:/});await buttons.first().click();await freeze(page);
+  await page.clock.runFor(3_000);await buttons.first().click();
+  await expect(toast(page).locator('.toast-count')).toHaveText('4s');await page.clock.runFor(3_000);await expect(toast(page)).toBeVisible();
+  await page.clock.runFor(1_500);await expect(toast(page)).toHaveCount(0);
  });
  test('Undo before it goes restores the piece and replaces the toast with the plain confirmation',async({page})=>{
   await page.goto('/items/92001');await hide(page);
