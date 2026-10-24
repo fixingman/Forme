@@ -109,3 +109,71 @@ test.describe('item page: one action row and one brand control',()=>{
   const notForMe=(await page.locator('.detail-actions').getByRole('button',{name:'Not for me: Cotton shirt',exact:true}).boundingBox())!;expect(notForMe.height).toBeGreaterThanOrEqual(38);
  });
 });
+
+test.describe('Undo toast',()=>{
+ const toast=(page:import('@playwright/test').Page)=>page.locator('.toast-action');
+ const hide=(page:import('@playwright/test').Page)=>page.getByRole('button',{name:'Not for me: Cotton shirt',exact:true}).click();
+ test('"Not for me" shows a bottom toast with Undo, not a banner in the page',async({page})=>{
+  await page.goto('/items/92001');await hide(page);
+  await expect(toast(page)).toBeVisible();await expect(toast(page)).toContainText('Piece hidden from your feeds.');
+  await expect(page.locator('.content .feedback-notice')).toHaveCount(0);
+  const box=(await toast(page).boundingBox())!,view=page.viewportSize()!;
+  expect(box.y).toBeGreaterThan(view.height/2);expect(await page.evaluate(()=>getComputedStyle(document.querySelector('.toast-stack')!).position)).toBe('fixed');
+  await expect(toast(page).getByRole('button',{name:'Undo Not for me',exact:true})).toBeVisible();await expect(toast(page).getByRole('button',{name:'Dismiss feedback notice',exact:true})).toBeVisible();
+ });
+ test('it dismisses itself after about six seconds',async({page})=>{
+  await page.clock.install();await page.goto('/items/92001');await hide(page);await expect(toast(page)).toBeVisible();
+  await page.clock.runFor(5_000);await expect(toast(page)).toBeVisible();
+  await page.clock.runFor(1_500);await expect(toast(page)).toHaveCount(0);
+  // the piece stays hidden, and can still be restored from the page
+  await expect(page.getByRole('button',{name:'Restore Cotton shirt',exact:true})).toBeVisible();
+ });
+ test('it waits while the pointer is over it, then goes after a fresh interval',async({page})=>{
+  await page.clock.install();await page.goto('/items/92001');await hide(page);await expect(toast(page)).toBeVisible();
+  await toast(page).hover();await page.clock.runFor(30_000);await expect(toast(page)).toBeVisible();
+  await page.mouse.move(5,5);await page.clock.runFor(5_000);await expect(toast(page)).toBeVisible();
+  await page.clock.runFor(1_500);await expect(toast(page)).toHaveCount(0);
+ });
+ test('it waits while a control inside it has keyboard focus',async({page})=>{
+  await page.clock.install();await page.goto('/items/92001');await hide(page);
+  await toast(page).getByRole('button',{name:'Undo Not for me',exact:true}).focus();await page.clock.runFor(30_000);await expect(toast(page)).toBeVisible();
+  await page.evaluate(()=>(document.activeElement as HTMLElement).blur());await page.clock.runFor(6_500);await expect(toast(page)).toHaveCount(0);
+ });
+ test('Undo before it goes restores the piece and replaces the toast with the plain confirmation',async({page})=>{
+  await page.goto('/items/92001');await hide(page);
+  await toast(page).getByRole('button',{name:'Undo Not for me',exact:true}).click();
+  await expect(toast(page)).toHaveCount(0);await expect(page.locator('.toast',{hasText:'Piece restored'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Not for me: Cotton shirt',exact:true})).toBeVisible();
+ });
+ test('the close button dismisses it without changing anything',async({page})=>{
+  await page.goto('/items/92001');await hide(page);await toast(page).getByRole('button',{name:'Dismiss feedback notice',exact:true}).click();
+  await expect(toast(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Restore Cotton shirt',exact:true})).toBeVisible();
+ });
+ test('the brand version is also a self-dismissing toast, and Undo restores the previous brand state',async({page})=>{
+  await page.goto('/items/92001');
+  await page.getByRole('group',{name:'Our Legacy',exact:true}).getByRole('button',{name:'Exclude brand',exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Not interested in Our Legacy',exact:true}).click();
+  await expect(toast(page)).toContainText('Our Legacy hidden from your feeds.');
+  await toast(page).getByRole('button',{name:'Undo brand exclusion',exact:true}).click();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('forme-v2')!).excluded)).toEqual([]);
+ });
+ test('the toast and a plain toast stack instead of overlapping',async({page})=>{
+  await page.goto('/items/92001');await hide(page);await expect(toast(page)).toBeVisible();
+  // Navigate inside the app (the toast lives in the persistent shell), then raise a plain toast by adding a suggested style.
+  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'My Styles',exact:true}).click();await expect(page).toHaveURL(/\/styles$/);
+  await expect(toast(page)).toBeVisible();
+  await page.getByText('Quiet Luxury',{exact:true}).locator('..').getByRole('button',{name:'Add style'}).click();
+  const stack=page.locator('.toast-stack .toast');await expect(stack).toHaveCount(2);await expect(stack.nth(1)).toContainText('added to My Styles');
+  const [a,b]=await Promise.all([stack.nth(0).boundingBox(),stack.nth(1).boundingBox()]);
+  expect(a!.y+a!.height).toBeLessThanOrEqual(b!.y+1);expect(Math.abs(a!.x+a!.width-(b!.x+b!.width))).toBeLessThan(2);
+ });
+ for(const [name,size] of [['phone',{width:375,height:760}],['small phone',{width:340,height:700}]] as const)
+ test(`on a ${name} it sits above the bottom navigation, fits, and keeps 44px touch targets`,async({page})=>{
+  await page.setViewportSize(size);await page.goto('/items/92001');await hide(page);await expect(toast(page)).toBeVisible();
+  const box=(await toast(page).boundingBox())!,nav=await page.locator('nav.mobile-nav, .mobile-nav, nav[aria-label="Mobile navigation"]').first().boundingBox().catch(()=>null);
+  expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(size.width);
+  if(nav)expect(box.y+box.height).toBeLessThanOrEqual(nav.y+1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect((await toast(page).getByRole('button',{name:'Undo Not for me',exact:true}).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ });
+});
