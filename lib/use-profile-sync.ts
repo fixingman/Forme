@@ -9,7 +9,8 @@ export type SyncState='off'|'signed-out'|'loading'|'saved'|'saving'|'offline';
 export type Account={email:string;role:'owner'|'member'}|null;
 type Marker={user:string;rev:number;dirty:boolean};
 type Remote={backup:unknown;revision:number;updatedAt:string}|null;
-const MARKER='forme-sync',ASIDE='forme-v2-before-sync',DEBOUNCE=1000;
+const MARKER='forme-sync',ASIDE='forme-v2-before-sync',DEBOUNCE=1000,FOLLOW_UP=250;
+const wait=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
 const readMarker=():Marker|null=>{try{const value=JSON.parse(localStorage.getItem(MARKER)??'null');return value&&typeof value.user==='string'&&Number.isInteger(value.rev)?{user:value.user,rev:value.rev,dirty:!!value.dirty}:null;}catch{return null;}};
 const writeMarker=(marker:Marker)=>{try{localStorage.setItem(MARKER,JSON.stringify(marker));}catch{}};
 const fingerprint=(data:Preferences,saved:Listing[])=>JSON.stringify({s:data,l:saved.filter(item=>data.saved.includes(item.id))});
@@ -43,17 +44,35 @@ export function useProfileSync({data,savedListings,ready,mode,collapsed,apply,no
   return response.json();
  },[]);
 
+ // One save runs at a time. Edits made while it is in flight are not dropped: when it finishes, anything newer than what it
+ // sent is sent next (revision chained from the server's answer), and "saved" is only reported once nothing is waiting.
  const push=useCallback(async()=>{
   if(busy.current||!user.current)return;
-  const marker=readMarker(),now=latest.current;
-  if(!marker||marker.user!==user.current)return;
-  busy.current=true;setState('saving');
+  busy.current=true;
   try{
-   const backup=createBackup(now.data,{mode:now.mode,collapsed:now.collapsed},now.savedListings);
-   const response=await fetch('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({backup,expectedRevision:marker.rev})});
-   if(response.ok){const {revision}=await response.json();synced.current=fingerprint(now.data,now.savedListings);writeMarker({user:user.current,rev:revision,dirty:false});setState('saved');return;}
-   if(response.status===409){const {profile}=await response.json();if(profile&&adopt(profile,syncMessage.conflict))setState('saved');else setState('offline');return;}
-   setState(response.status===401||response.status===403?'signed-out':'offline');
+   for(;;){
+    const marker=readMarker(),now=latest.current;
+    if(!marker||marker.user!==user.current)return;
+    const sent=fingerprint(now.data,now.savedListings);
+    // A stale debounce timer can fire after a follow-up already sent everything: nothing is unsent then, so send nothing.
+    // (A reloaded browser with unsent edits still has dirty set, so it does send.)
+    if(!marker.dirty&&sent===synced.current){setState('saved');return;}
+    setState('saving');
+    const backup=createBackup(now.data,{mode:now.mode,collapsed:now.collapsed},now.savedListings);
+    const response=await fetch('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({backup,expectedRevision:marker.rev})});
+    if(response.ok){
+     const {revision}=await response.json();
+     synced.current=sent;
+     const pending=fingerprint(latest.current.data,latest.current.savedListings)!==sent;
+     writeMarker({user:user.current,rev:revision,dirty:pending});
+     if(!pending){setState('saved');return;}
+     await wait(FOLLOW_UP);   // let a burst of edits settle, then send the newest state in one request
+     continue;
+    }
+    if(response.status===409){const {profile}=await response.json();if(profile&&adopt(profile,syncMessage.conflict))setState('saved');else setState('offline');return;}
+    setState(response.status===401||response.status===403?'signed-out':'offline');
+    return;
+   }
   }catch{setState('offline');}
   finally{busy.current=false;}
  },[adopt]);
@@ -86,6 +105,7 @@ export function useProfileSync({data,savedListings,ready,mode,collapsed,apply,no
   if(synced.current===null){synced.current=print;return;}
   if(print===synced.current)return;
   const marker=readMarker();if(marker)writeMarker({...marker,dirty:true});
+  setState(previous=>previous==='saved'?'saving':previous);   // an unsent edit is never shown as saved
   if(timer.current)clearTimeout(timer.current);
   timer.current=setTimeout(()=>void push(),DEBOUNCE);
   return()=>{if(timer.current)clearTimeout(timer.current);};
