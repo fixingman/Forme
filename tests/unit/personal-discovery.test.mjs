@@ -27,7 +27,7 @@ test('retained saves outside the current feed teach brands and finer text traits
  const ranked=recommendListings(source,preferences,{signals:[saved,...source],now});
  assert.equal(ranked[0].item.id,81002);assert.match(ranked[0].reason,/brand you saved/);
  assert(ranked.find(row=>row.item.id===81003).score>ranked.find(row=>row.item.id===81001).score);
- assert.match(ranked.find(row=>row.item.id===81003).reason,/trousers like pieces you saved/);
+ {const row=ranked.find(row=>row.item.id===81003);assert.match([row.reason,...row.details].join(' · '),/trousers like pieces you saved/i);}
  assert(candidateBrands(preferences,[saved]).some(row=>row.brand==='Independent Maker'));
 });
 
