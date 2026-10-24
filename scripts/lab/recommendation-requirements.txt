@@ -1,0 +1,5 @@
+# Isolated evaluation only; these are not application/server dependencies.
+river==0.26.1
+numpy==2.5.4
+scipy==1.18.1
+narwhals==2.27.1

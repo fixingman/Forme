@@ -23,7 +23,13 @@
     "check:secrets": "node scripts/ops/check-secrets.mjs",
     "env:check": "node scripts/ops/check-env.mjs",
     "publish": "node scripts/ops/publish-snapshot.mjs",
-    "auth:check": "node scripts/ops/check-supabase.mjs"
+    "auth:check": "node scripts/ops/check-supabase.mjs",
+    "recommendations:setup": "python3 scripts/lab/setup-recommendations.py",
+    "recommendations:prepare": "node scripts/lab/prepare-recommendations.mjs",
+    "recommendations:compare": ".context/recommendation-lab/.venv/bin/python scripts/lab/compare_recommendations.py --gorse-bin .context/recommendation-lab/bin/gorse-in-one",
+    "recommendations:review:build": "node scripts/lab/review-recommendations.mjs",
+    "recommendations:review": "node scripts/lab/serve-review.mjs",
+    "test:recommendations": "node --test tests/unit/recommendation-evaluation.test.mjs tests/lab/recommendation-review.test.mjs && .context/recommendation-lab/.venv/bin/python -m unittest discover -s tests/lab -p \"test_*.py\""
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
