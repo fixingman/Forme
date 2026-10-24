@@ -20,7 +20,7 @@ test('normalization preserves legacy behavior, deduplicates aliases and bounds i
 });
 
 // --- 24 Oct: unclassified items with a letter size, and underwear words ---------------------------------------------
-import {isLetterSize} from '../../lib/domain/sizes.mjs';
+import {isLetterSize,isSock,sockEuRange} from '../../lib/domain/sizes.mjs';
 import {classifyListing as classify} from '../../lib/domain/classification.mjs';
 const mine={enabled:true,selected:['M','L','W31','W32','EU 48','EU 50'],groups:{clothing:['M','L','EU 48','EU 50'],waist:['W31','W32'],shoes:[],other:[]},includeOneSize:true,includeUnspecified:true};
 const strict={...mine,includeUnspecified:false};
@@ -54,11 +54,38 @@ test('classified items and legacy un-grouped sizing behave exactly as before',()
  assert.equal(matchesMySizes(mystery('XL'),{enabled:true,selected:['M'],includeOneSize:true,includeUnspecified:true}),false,'legacy sizing still compares labels directly');
  assert.equal(matchesMySizes(mystery('XL'),{...mine,enabled:false}),true,'filter off shows everything');
 });
-test('underwear words are clothing, so their size is checked; socks and unrelated words are untouched',()=>{
+test('underwear words are clothing, so their size is checked; unrelated words and singular trunk are untouched',()=>{
  for(const title of ['CDLP men’s underwear','Calvin Klein boxer briefs','Swim trunks','Silk pyjamas set','Cotton undershirt','Jockey underpants'])assert.deepEqual(classify({title,category:''}).sizeGroup,'clothing',title);
  assert.equal(classify({title:'Boxer shorts in cotton',category:''}).productGroup,'bottoms','shorts still win for boxer shorts');
- assert.equal(classify({title:'Wool socks',category:''}).productGroup,'unknown','sock sizes are numeric ranges, so they stay unclassified');
+ assert.equal(classify({title:'Wool socks',category:''}).productGroup,'clothing');assert.equal(classify({title:'Sock sneakers',category:''}).productGroup,'shoes','shoes win over sock');
  assert.equal(classify({title:'Trunk show poster',category:''}).productGroup,'unknown','trunk (singular) is not underwear');
  const xlUnderwear={title:'CDLP men’s underwear',category:'',size:'XL'};
  assert.equal(matchesMySizes(xlUnderwear,mine),false);assert.equal(matchesMySizes({...xlUnderwear,size:'M'},mine),true);
+});
+
+const withShoes=(...shoes)=>({...mine,selected:[...mine.selected,...shoes],groups:{...mine.groups,shoes}});
+const sock=size=>({title:'Merino socks',category:'',size});
+test('sock sizes are European shoe-size ranges: parsed strictly, never converted',()=>{
+ for(const [label,range] of [['40-43',{lo:40,hi:43}],['40 - 43',{lo:40,hi:43}],['40–43',{lo:40,hi:43}],['EU 40-43',{lo:40,hi:43}],['40-43 EU',{lo:40,hi:43}],['42',{lo:42,hi:42}],['EU 42',{lo:42,hi:42}],['42.5',{lo:42.5,hi:42.5}],['39-42.5',{lo:39,hi:42.5}]])assert.deepEqual(sockEuRange(label.toUpperCase()),range,label);
+ for(const no of ['UK 6-8','US 7-9','M','S/M','6-8','43-40','35-50','10-60','','One size'])assert.equal(sockEuRange(no.toUpperCase()),null,no);
+ assert.equal(isSock({title:'Merino socks',category:''}),true);assert.equal(isSock({title:'Sock sneakers',category:''}),false);assert.equal(isSock({title:'Wool jacket',category:''}),false);
+});
+test('socks are matched against your shoe sizes: inside the range is a match, outside is hidden',()=>{
+ const sizing=withShoes('EU 42');
+ for(const size of ['40-43','EU 41-44','42','39-42'])assert.equal(matchesMySizes(sock(size),sizing),true,size);
+ for(const size of ['36-40','43-46','44','35-38'])assert.equal(matchesMySizes(sock(size),sizing),false,size);
+ assert.equal(matchesMySizes(sock('43-46'),withShoes('EU 42','EU 44')),true,'any of several shoe sizes can match');
+ assert.equal(matchesMySizes(sock('41-46'),withShoes('EU 42.5')),true);
+ assert.equal(matchesMySizes(sock('43-46'),{...strict,groups:{...strict.groups,shoes:['EU 42']}}),false,'a wrong range is hidden in strict mode too');
+});
+test('socks the shoe-size rule cannot judge follow the include-unspecified setting, as before',()=>{
+ const sizing=withShoes('EU 42');
+ for(const size of ['UK 6-8','US 7-9','M','S/M'])assert.equal(matchesMySizes(sock(size),sizing),true,size),assert.equal(matchesMySizes(sock(size),{...sizing,includeUnspecified:false}),false,`${size} stays hidden when unspecified items are excluded`);
+ assert.equal(matchesMySizes(sock('40-43'),mine),true,'no shoe sizes saved: the setting decides');assert.equal(matchesMySizes(sock('40-43'),strict),false);
+ assert.equal(matchesMySizes(sock('One size'),withShoes('EU 42')),true);assert.equal(matchesMySizes(sock('One size'),{...withShoes('EU 42'),includeOneSize:false}),false);
+ assert.equal(matchesMySizes(sock('40-43'),{enabled:true,selected:['EU 42'],includeOneSize:true,includeUnspecified:true}),false,'legacy un-grouped sizing still compares labels directly');
+});
+test('shoes and sock-named shoes are not affected by the sock rule',()=>{
+ assert.equal(matchesMySizes({title:'Sock sneakers',category:'',size:'42'},withShoes('EU 42')),true);assert.equal(matchesMySizes({title:'Sock sneakers',category:'',size:'44'},withShoes('EU 42')),false);
+ assert.equal(matchesMySizes({title:'Leather boots',category:'',size:'42'},mine),false,'no shoe sizes saved: shoes stay as before');
 });
