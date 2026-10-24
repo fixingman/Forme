@@ -86,3 +86,23 @@ test('a server error and a garbled answer stay the generic failure, never a pars
  await page.goto('/following');await expect(page.getByText('Live listings could not be loaded.',{exact:false})).toBeVisible();
  await expect(page.getByText('JSON',{exact:false})).toHaveCount(0);
 });
+
+test('a dead photo shows a placeholder everywhere, with an Open on Vinted link only on the item page',async({page})=>{
+ await page.route(/vinted\.net/,route=>route.abort());
+ await page.goto(`/items/${first.id}`);
+ const photo=page.locator('.detail .photo');
+ await expect(photo.getByText('Photo unavailable',{exact:true})).toBeVisible();
+ await expect(photo.getByText('It may have changed on Vinted.',{exact:true})).toBeVisible();
+ const link=photo.getByRole('link',{name:'Open on Vinted ↗'});
+ await expect(link).toHaveAttribute('href',(first as {sourceUrl:string}).sourceUrl);await expect(link).toHaveAttribute('target','_blank');await expect(link).toHaveAttribute('rel',/noopener/);await expect(link).toHaveAttribute('rel',/noreferrer/);
+ await page.goto('/following');
+ const card=page.getByTestId(`listing-${first.id}`);await expect(card).toBeVisible();
+ await expect(card.getByText('Photo unavailable',{exact:true})).toBeVisible();
+ await expect(card.getByRole('link',{name:/Open on Vinted/})).toHaveCount(0);await expect(card.getByText('It may have changed on Vinted.')).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+test('a photo that loads shows no placeholder and no extra link',async({page})=>{
+ await page.route(/vinted\.net/,route=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==','base64')}));
+ await page.goto(`/items/${first.id}`);await expect(page.locator('.detail .photo img')).toBeVisible();
+ await expect(page.getByText('Photo unavailable')).toHaveCount(0);await expect(page.locator('.photo-fallback-link')).toHaveCount(0);
+});

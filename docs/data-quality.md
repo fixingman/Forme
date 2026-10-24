@@ -25,7 +25,8 @@ Spot-check found one false positive ("Jean-Michel Basquiat" read as denim); the 
 
 - Sold is reported only for the provider's documented combination (`is_closed` and not `can_buy` and not `is_hidden` and not `is_reserved`). Hidden listings are `unavailable`, not sold.
 - A 404 (deleted or withdrawn) is recorded as `unavailable`; failed calls are not charged.
-- Confirmed sold/unavailable survives later search refreshes. Absence from a search is still never treated as proof of sale.
+- Confirmed sold/unavailable survives later search refreshes.
+- The same item-detail response carries the listing's current photos, so a check also replaces a retired photo link when the address differs (sellers re-uploading photos makes the stored address return 404). Only a plain https address on Vinted's own image domain is accepted, nothing else about the listing changes, and the result message counts refreshed photo links. This is written to the provider docs' response shape (`photo.url` / `photos[].url`) and has not been confirmed against a real response; check the "photo links refreshed" count after the first real run. It applies only to saved items, since those are what availability checks cover. On the item page a dead photo shows an "Open on Vinted" link; cards show the plain placeholder. Absence from a search is still never treated as proof of sale.
 - Not run against the real provider as part of this work. Credit cost per call (10) is from the provider docs and should be confirmed from the `X-Credits-Used` header on the first real call.
 
 ## Remaining gaps
