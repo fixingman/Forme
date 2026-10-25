@@ -115,6 +115,38 @@ test('a worker that stops heartbeating is marked interrupted, keeps its reservat
  assert.equal(control.recover().length,0);
  }finally{control.close();await rm(root,{recursive:true,force:true});}
 });
+// A server that dies mid-run (a restart, a closed session) leaves a "running" row and a lock behind. Nothing is running it, so it
+// must not keep blocking collection until someone remembers to start the separate worker.
+const strand=async(root,planId,{pid=2147483646,minutesAgo=10}={})=>{
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(join(root,'.forme-data/refresh.sqlite'));
+ db.prepare("UPDATE runs SET status='running',worker_id='dead',heartbeat_at=? WHERE id=?").run(new Date(Date.now()-minutesAgo*60000).toISOString(),planId);db.close();
+ await writeFile(join(root,'.forme-data/refresh.lock'),JSON.stringify({pid,workerId:'dead'}));
+};
+test('reading the status recovers a run whose server died: interrupted, reservation kept, never retried',async()=>{
+ let calls=0;const {root,control}=await setup(async()=>{calls++;return providerReply(91005);});try{
+ const plan=await control.plan(settings,{scope:'discover',limit:1});await control.enqueue(plan.id,settings);await strand(root,plan.id);
+ const status=await control.status();
+ assert.equal(status.running,false,'the dead run no longer shows as running');assert.equal(status.runs[0].status,'interrupted');assert.match(status.runs[0].result.error,/worker stopped/);
+ assert.equal(status.reservedCredits,5,'its reservation is still counted');assert.equal(status.remainingCredits,10);
+ assert.equal(calls,0,'nothing was sent to the provider');assert.equal((await control.work()).status,'idle');assert.equal(calls,0,'and nothing was retried');
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});
+test('a dead run no longer blocks confirming a refresh that was quoted before the server died',async()=>{
+ const {root,control}=await setup(async()=>providerReply(91006));try{
+ const first=await control.plan(settings,{scope:'discover',limit:1});await control.enqueue(first.id,settings);
+ const second=await control.plan(settings,{scope:'discover',limit:1});   // quoted while the first run was still alive: planning reads the status, which would also recover
+ await strand(root,first.id);   // the server dies after the quote was shown, before the person confirms
+ assert.equal((await control.enqueue(second.id,settings)).status,'queued','not "Another refresh is running"');
+ const {runs}=await control.status();assert.deepEqual(runs.map(row=>row.status).sort(),['interrupted','queued']);
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});
+test('status and queueing leave a live worker, and a recent heartbeat, alone',async()=>{
+ const {root,control}=await setup(async()=>providerReply(91007));try{
+ const plan=await control.plan(settings,{scope:'discover',limit:1});await control.enqueue(plan.id,settings);await strand(root,plan.id,{pid:process.pid,minutesAgo:1});
+ assert.equal((await control.status()).running,true,'a heartbeat from a minute ago is a live worker');
+ const next=await control.plan(settings,{scope:'discover',limit:1});await assert.rejects(control.enqueue(next.id,settings),/Another refresh is running/);
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});
 test('recovery leaves a live worker alone',async()=>{
  const {root,control}=await setup(async()=>providerReply(91004));try{
  const plan=await control.plan(settings,{scope:'discover',limit:1});await control.enqueue(plan.id,settings);
