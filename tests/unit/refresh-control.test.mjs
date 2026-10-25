@@ -23,6 +23,32 @@ test('past pilot credits count toward the cap, blocked runs send nothing and cap
  control.setBudget(25);assert.equal((await control.status()).remainingCredits,10);assert.throws(()=>control.setBudget(1000));
  }finally{control.close();await rm(root,{recursive:true,force:true});}
 });
+test('turning the daily cap off preserves spending and reservations, survives reopen and can be reversed',async()=>{
+ let calls=0;const {root,control}=await setup(async()=>{calls++;throw Error('No collection authorized');});let reopened;
+ try{
+  const day=new Date().toISOString().slice(0,10);
+  await writeFile(join(root,'.forme-data/usage.json'),JSON.stringify({[day]:{reservedCredits:40,reportedCredits:35}}));
+  control.setBudget(0);assert.equal((await control.status()).remainingCredits,null);
+  const plan=await control.plan(settings,{scope:'discover',limit:3});await control.enqueue(plan.id,settings);await control.enqueue(plan.id,settings);
+  assert.equal(calls,0);assert.equal((await control.status()).reservedCredits,55);
+  reopened=refreshControl({root,request:async()=>{throw Error('No request');}});
+  assert.equal((await reopened.status()).dailyCap,0);assert.equal((await reopened.status()).remainingCredits,null);
+  reopened.setBudget(15);assert.equal((await reopened.status()).remainingCredits,0);
+  reopened.setBudget(600);assert.equal((await reopened.status()).remainingCredits,545);
+  for(const cap of [-1,1,4,601,null,NaN])assert.throws(()=>reopened.setBudget(cap));
+  assert.equal((await reopened.status()).reservedCredits,55);assert.equal(calls,0);
+ }finally{reopened?.close();control.close();await rm(root,{recursive:true,force:true});}
+});
+test('large brand quotes are bounded to 600 credits and never send a request or reserve on preview',async()=>{
+ let calls=0;const {root,control}=await setup(async()=>{calls++;throw Error('No collection authorized');});try{
+  const many={...settings,following:Array.from({length:121},(_,index)=>`Brand ${index}`)};
+  const plan=await control.plan(many,{scope:'following',limit:120});
+  assert.equal(plan.jobs.length,120);assert.equal(plan.maximumCredits,600);assert.equal(plan.maximumItems,2400);
+  assert.equal(new Set(plan.jobs.map(job=>job.brand)).size,120);
+  await assert.rejects(control.plan(many,{scope:'following',limit:121}),/1–120/);
+  assert.equal((await control.status()).reservedCredits,0);assert.equal(calls,0);
+ }finally{control.close();await rm(root,{recursive:true,force:true});}
+});
 test('a paid run uses exact brand/category filters, checkpoints results and never repeats a completed plan',async()=>{
  let calls=0;const {root,control}=await setup(async input=>{calls++;const url=new URL(input);assert.equal(url.searchParams.get('brand_ids'),'2053426');assert.equal(url.searchParams.get('catalog_ids'),'5');assert.equal(url.searchParams.has('size_ids'),false);return Response.json({items:[{id:90001,title:'Auralee cotton shirt',brand_title:'Auralee',size_title:'M',price:{amount:'100',currency_code:'SEK'},url:'https://www.vinted.se/items/90001-shirt',photo:{url:'https://images1.vinted.net/test.webp'}}]},{headers:{'x-credits-used':'5'}});});try{
  const plan=await control.plan(settings,{scope:'discover',limit:1});const result=await control.run(plan.id,settings);assert.equal(result.status,'complete');assert.equal(result.accepted,1);assert.equal(result.eligible,1);

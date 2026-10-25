@@ -17,7 +17,7 @@ const backup=localProfile??JSON.parse(await readFile(settingsPath,'utf8')),plan=
 const fingerprint=createHash('sha256').update(JSON.stringify(plan)).digest('hex');
 async function readJson(path,fallback){try{return JSON.parse(await readFile(path,'utf8'));}catch(error){if(error.code==='ENOENT')return fallback;throw error;}}
 async function atomic(path,value){await writeFile(`${path}.tmp`,JSON.stringify(value,null,2)+'\n',{mode:0o600});await rename(`${path}.tmp`,path);}
-async function enforceControlBudget(credits){if(credits>0&&existsSync(`${stateDir}/refresh.sqlite`)){const control=refreshControl();try{if((await control.status()).remainingCredits<credits)throw new Error('Configured daily credit cap reached. No requests sent.');}finally{control.close();}}}
+async function enforceControlBudget(credits){if(credits>0&&existsSync(`${stateDir}/refresh.sqlite`)){const control=refreshControl();try{const {remainingCredits}=await control.status();if(remainingCredits!==null&&remainingCredits<credits)throw new Error('Configured daily credit cap reached. No requests sent.');}finally{control.close();}}}
 const prior=await readJson(output,{items:[]}),coverage=prior.planFingerprint===fingerprint?prior.coverage??[]:[];
 const complete=args.includes('--complete');
 const choose=covered=>complete?plan.jobs.filter(job=>!covered.some(row=>row.id===job.id)):selectJobs(plan,covered);
@@ -39,7 +39,7 @@ try {
  if(jobs.length*5>240)throw new Error('Batch exceeds 240 credits.');
  const today=new Date().toISOString().slice(0,10),ledger=await readJson(`${stateDir}/usage.json`,{});
  const usage=ledger[today]??{reservedCredits:0,reportedCredits:0},reservation=jobs.length*5;
- if(!complete&&usage.reservedCredits+reservation>15)throw new Error('Local daily cap reached (15 reserved credits). No requests sent.');
+ if(!complete&&!existsSync(`${stateDir}/refresh.sqlite`)&&usage.reservedCredits+reservation>15)throw new Error('Local daily cap reached (15 reserved credits). No requests sent.');
  let allowances,allowance,newReservation=0;
  if(complete){
   allowances=await readJson(`${stateDir}/completion-allowances.json`,{});

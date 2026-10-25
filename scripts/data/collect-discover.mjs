@@ -35,7 +35,7 @@ try{
   const existing=state.records.find(record=>record.brand===brand);if(existing){if(existing.status!=='complete')throw new Error(`Prior ${brand} request has uncertain/failed status. No retry or additional spending.`);continue;}
   if(!process.env.SCRAPEBADGER_API_KEY)throw new Error('Missing provider key; no request sent');
   if(state.records.reduce((sum,record)=>sum+record.reservedCredits,0)+5>15)throw new Error('Pilot credit cap reached');
-  if(existsSync(joinRefreshBudget())){const control=refreshControl();try{if((await control.status()).remainingCredits<5)throw new Error('Configured daily credit cap reached. No requests sent.');}finally{control.close();}}
+  if(existsSync(joinRefreshBudget())){const control=refreshControl();try{const {remainingCredits}=await control.status();if(remainingCredits!==null&&remainingCredits<5)throw new Error('Configured daily credit cap reached. No requests sent.');}finally{control.close();}}
   if(called&&process.env.NODE_ENV!=='test')await delay(13000);
   const record={brand,status:'started',reservedCredits:5,fetchedAt:new Date().toISOString()};state.records.push(record);await atomic(statePath,state);
   const url=new URL('https://scrapebadger.com/v1/vinted/search');for(const [key,value] of Object.entries({query:brand,market:'se',catalog_ids:'5',brand_ids:brandReference(brand).id,per_page:'20',page:'1',order:'newest_first'}))url.searchParams.set(key,value);
