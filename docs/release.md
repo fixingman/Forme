@@ -12,6 +12,10 @@ Reviewed 25 October 2026. These are operational procedures; see [current state](
 
 A configured hosted build can use Supabase authentication, profiles and published listings. Collection APIs remain unavailable there: hosted browsing is not a staging collector.
 
+## Temporary learning-release hold
+
+On 25 October, `vercel.json` temporarily sets `git.deploymentEnabled.main=false`. The learning tables were confirmed missing through the hosted REST schema. This allows merging and verifying GitHub CI while the existing production deployment continues serving. Preview branches remain enabled. Remove this hold only after applying/confirming `20261025000000_learning.sql` and checking signed-in owner access, then push the release commit and verify its Vercel deployment before real-device testing. See [Vercel's Git configuration reference](https://vercel.com/docs/project-configuration/git-configuration).
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs: secret scan, UI format check, typecheck, unit tests, production build, Playwright (bundled Chromium). Rehearsed locally on 21 Oct 2026 for everything except the Playwright step, which needs a Chromium download matching Playwright 1.64 that was not installed on that machine. Dependabot proposes npm updates weekly and Actions updates monthly.
