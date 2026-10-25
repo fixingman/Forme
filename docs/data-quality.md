@@ -13,6 +13,22 @@ Written 21 October 2026. Measured on the 848-listing local snapshot before and a
 
 Spot-check found one false positive ("Jean-Michel Basquiat" read as denim); the rule was tightened and a regression test added.
 
+## 25 October: wider category rules and brand-ID lookup
+
+Measured on the 972-listing local snapshot with `npm run data:coverage`.
+
+| Field | Before | After | How |
+|---|---|---|---|
+| Category classified | 71.6% (696) | 84% (816) | More title words, accent-folded: bomber, longsleeve, tshirt, blouse, raincoat, leggings, joggers, Tabi/GATs, bracelet, tote; homeware and beauty goods (dripper, ornament, serving dish, deodorant, parfum); common Scandinavian, German, French, Polish and Finnish garment words. |
+| Pieces the size filter can judge | 574 | 637 | A size is only checked once a piece is known to be clothing, bottoms or shoes. All 63 newly recognised pieces carry a size label. |
+| Style (inferred) | 25.4% | 28.6% | Follows from the category: style is only inferred for fashion categories. |
+
+Every changed listing was reviewed by hand: all changes were unknown → a category, and none moved between known categories. Still unknown (156) are mostly titles that only name the brand ("Eytys", "Auralee"), fabric-only titles and a few objects (a ukulele); these stay unknown on purpose. Words that are ordinary language in another market ("bra" = good in Swedish, "kappa" = a brand, singular "short") are deliberately not used.
+
+**Brand IDs.** The provider's search results carry no brand ID, so exact IDs come from its brand lookup (`GET /v1/vinted/brands`, 3 credits per brand, failed calls not charged). `npm run brands:resolve` previews for free and runs only with `--confirm <credits>` equal to the quoted maximum. It goes through the same queue as collection, so the daily cap, reservations, the single-worker lock and the no-automatic-retry rule apply. Only one brand whose name is the same ignoring case, accents and punctuation is accepted ("Nike ACG" is never "Nike"; two equally named brands are left ambiguous). Results are saved on this computer in `.forme-data/brand-ids.json` as they arrive; hand-verified entries in `data/vinted-brands.json` always win. Brands whose listings are all homeware, beauty or toys are left out unless named with `--brand`. Not run against the real provider yet.
+
+**Department** is unchanged and still never inferred. The provider's search results have no gender field; a department comes only from explicit title wording or from searching inside the Men's catalog (catalog 5), which the refresh does when your department preference is men only. Raising it means re-collecting with that scope, which costs credits (5 per brand search).
+
 ## Policies kept on purpose
 
 - **Department is never inferred** from brand, size, silhouette or photo (`lib/domain/gender.mjs`). The way to raise coverage is collection scope (Men's catalog searches are tagged `search-filter`) and provider fields, not guessing. Low department coverage is a collection decision, not a classifier gap.
@@ -31,7 +47,7 @@ Spot-check found one false positive ("Jean-Michel Basquiat" read as denim); the 
 
 ## Remaining gaps
 
-- Category is unknown for about a quarter of listings and sizes are missing or unmatched for a similar share; both come from short, free-text marketplace titles.
-- Only three brands have verified exact provider brand IDs.
+- Category is unknown for about 16% of listings and sizes are missing for about 23%; both come from short, free-text marketplace titles. A missing size is never guessed.
+- Three brands have hand-verified exact provider brand IDs; the rest await a paid lookup (see above).
 - Style coverage is capped by the brand reference and keyword rules; expanding the brand list is cheap, but each addition is an editorial judgement.
 - Nothing measures whether the inferred styles match what users consider a match. Add saves-by-style once there is real usage.

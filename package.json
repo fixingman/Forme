@@ -14,6 +14,7 @@
     "data:discovery-plan": "node scripts/data/discovery-plan.mjs",
     "data:discover": "node scripts/data/collect-discover.mjs",
     "worker": "node scripts/ops/worker.mjs",
+    "brands:resolve": "node scripts/ops/resolve-brands.mjs",
     "data:coverage": "node scripts/data/data-coverage.mjs",
     "backup": "node scripts/ops/backup.mjs",
     "restore": "node scripts/ops/restore.mjs",
