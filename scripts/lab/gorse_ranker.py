@@ -8,6 +8,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 VERSION = "0.5.11"
@@ -110,7 +111,7 @@ uri = {path("blob")}
         return [{"key": row if isinstance(row, str) else row.get("Id", row.get("ItemId", row.get("id"))), "score": 0 if isinstance(row, str) else row.get("Score", row.get("score", 0))} for row in raw]
 
 
-def evaluate(case, binary, directory):
+def evaluate(case, binary, directory, verify_undo=True):
     started = time.perf_counter()
     if not case["candidateKeys"]:
         return {"ranking": [], "mode": "empty-candidate-pool", "nativeTrainingConfirmed": False}
@@ -118,7 +119,8 @@ def evaluate(case, binary, directory):
     try:
         engine.request("POST", "/api/users", [{"UserId": "owner", "Labels": {}}])
         engine.request("POST", "/api/items", [{"ItemId": item["key"], "Labels": {"tags": sorted(item["features"])}, "Timestamp": item["at"], "Categories": ["evaluation"]} for item in case["items"]])
-        feedback = [{"FeedbackType": "save" if row["label"] else "dismiss", "UserId": "owner", "ItemId": row["key"], "Value": row["weight"], "Timestamp": "2026-10-24T00:00:00Z"} for row in case["examples"]]
+        feedback_at = datetime.fromtimestamp(case.get("now", time.time() * 1000) / 1000, timezone.utc).isoformat()
+        feedback = [{"FeedbackType": "save" if row["label"] else "dismiss", "UserId": "owner", "ItemId": row["key"], "Value": row["weight"], "Timestamp": feedback_at} for row in case["examples"]]
         trainable = len(case["examples"]) >= 8 and len({row["label"] for row in case["examples"]}) == 2
         if feedback:
             engine.request("PUT", "/api/feedback", feedback)
@@ -146,9 +148,9 @@ def evaluate(case, binary, directory):
             ranking = case["baseline"];mode = "current-rules-fallback-insufficient-feedback"
         started_query = time.perf_counter();engine.ranking(len(case["items"]));query_ms = (time.perf_counter() - started_query) * 1000
         undo = None
-        if trainable and filtered:
+        if verify_undo and trainable and filtered:
             probe = filtered[0]["key"]
-            engine.request("PUT", "/api/feedback", [{"FeedbackType": "dismiss", "UserId": "owner", "ItemId": probe, "Value": 1, "Timestamp": "2026-10-24T00:00:00Z"}])
+            engine.request("PUT", "/api/feedback", [{"FeedbackType": "dismiss", "UserId": "owner", "ItemId": probe, "Value": 1, "Timestamp": feedback_at}])
             immediate = engine.ranking(len(case["items"]))
             time.sleep(1.2)
             after = engine.ranking(len(case["items"]))

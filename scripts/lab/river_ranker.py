@@ -7,9 +7,9 @@ VERSION = "0.26.1"
 MIN_EXAMPLES = 8
 
 
-def train(examples):
+def train(examples, regularization=0.01):
     # Rebuild from canonical active feedback: restore/unsave needs replay, not an inverse gradient.
-    model = linear_model.LogisticRegression(optimizer=optim.SGD(0.1), l2=0.01)
+    model = linear_model.LogisticRegression(optimizer=optim.SGD(0.1), l2=regularization)
     active = sorted(examples, key=lambda row: row["key"])
     for _ in range(10):
         for row in active:
@@ -26,7 +26,8 @@ def evaluate(case):
     import river
     if river.__version__ != VERSION:
         raise RuntimeError(f"Expected River {VERSION}, found {river.__version__}")
-    model = train(case["examples"])
+    regularization = 0.1 if case.get("configuration") == "regularized" else 0.01
+    model = train(case["examples"], regularization)
     train_ms = (time.perf_counter() - started) * 1000
     by_key = {row["key"]: row for row in case["items"]}
 
@@ -39,8 +40,8 @@ def evaluate(case):
     # A hypothetical dismiss followed by restore returns to the identical canonical examples.
     probe_key = case["candidateKeys"][0]
     transient = copy.deepcopy(case["examples"]) + [{"key": probe_key, "features": by_key[probe_key]["features"], "label": 0, "weight": 1}]
-    changed = score(train(transient))
-    restored = score(train(case["examples"]))
+    changed = score(train(transient, regularization))
+    restored = score(train(case["examples"], regularization))
     original_scores = {row["key"]: row["score"] for row in ranking}
     delta = max(abs(row["score"] - original_scores[row["key"]]) for row in restored)
     by_score = {row["key"]: row["score"] for row in changed}

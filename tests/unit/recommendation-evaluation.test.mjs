@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {featuresFor,feedbackState,activeExamples,hardEligible,syntheticCases,rankedMetrics,catalogHashFor,makeCase} from '../../scripts/lab/recommendation-data.mjs';
+import {combineReviews,reviewItem} from '../../scripts/lab/recommendation-reviews.mjs';
 const settings={following:['Our Legacy'],excluded:['Zara'],styles:[],gender:{selected:['men'],includeUnknown:false},sizing:{enabled:true,selected:['M'],groups:{clothing:['M'],waist:[],shoes:[],other:[]},includeOneSize:false,includeUnspecified:false}};
 const item={id:91001,source:'vinted',sourceId:'91001',sourceKey:'vinted:91001',brand:'Auralee',title:'Black wool jacket',category:'',price:100,size:'M',gender:'men'};
 
@@ -48,4 +49,34 @@ test('review hashes bind judgments to observed item content, not item order alon
  assert.equal(catalogHashFor(rows),catalogHashFor([...rows].reverse()));
  assert.notEqual(catalogHashFor(rows),catalogHashFor([{...rows[0],price:300},rows[1]]));
  assert.notEqual(catalogHashFor(rows),catalogHashFor([{...rows[0],observedAt:'2026-10-22T00:00:00Z'},rows[1]]));
+});
+
+function pairedReviews(){
+ const primaryItems=[item,{...item,id:91002,sourceId:'91002',sourceKey:'vinted:91002'}];
+ const followed={...item,id:92001,sourceId:'92001',sourceKey:'vinted:92001',brand:'Our Legacy'};
+ const batch=(items,actions)=>{
+  const rows=items.map(reviewItem),catalogHash=catalogHashFor(rows);
+  return {review:{items:rows,catalogHash},judgments:{app:'forme-recommendation-review',version:1,catalogHash,events:items.map((item,index)=>({key:item.sourceKey,action:actions[index]}))}};
+ };
+ return {items:[...primaryItems,followed],settings,primary:batch(primaryItems,['save','dismiss']),context:batch([followed],['save'])};
+}
+
+test('follow-up labels train models without entering Discover test candidates or leaking held-out ratings',()=>{
+ const sample=pairedReviews(),combined=combineReviews(sample),diagnostic=combined.cases[0];
+ assert.equal(diagnostic.kind,'owner-cross-batch-diagnostic');
+ assert.deepEqual(diagnostic.candidateKeys,['vinted:91001','vinted:91002']);
+ assert.deepEqual(diagnostic.examples.map(row=>row.key),['vinted:92001']);
+ assert.equal(combined.study.context.positive,1);
+ for(const row of combined.cases){
+  assert(row.examples.some(example=>example.key==='vinted:92001'));
+  assert(row.examples.every(example=>!row.candidateKeys.includes(example.key)));
+  assert(!row.candidateKeys.includes('vinted:92001'));
+ }
+});
+
+test('combining reviews refuses mismatched content, foreign votes, overlapping batches and ineligible context',()=>{
+ const changed=pairedReviews();changed.items[0]={...changed.items[0],price:999};assert.throws(()=>combineReviews(changed),/fingerprint/);
+ const foreign=pairedReviews();foreign.context.judgments.events.push({key:'vinted:99999',action:'save'});assert.throws(()=>combineReviews(foreign),/judgments/);
+ const overlap=pairedReviews();overlap.context=overlap.primary;assert.throws(()=>combineReviews(overlap),/disjoint/);
+ const excluded=pairedReviews();excluded.settings={...settings,excluded:['Our Legacy']};assert.throws(()=>combineReviews(excluded),/eligible followed/);
 });

@@ -34,6 +34,7 @@ def main():
         raise ValueError("Private results must stay in ignored .context/.")
     dataset = json.loads(Path(args.dataset).read_text())
     report = {"evaluatedAt": datetime.now(timezone.utc).isoformat(), "datasetSHA256": hashlib.sha256(Path(args.dataset).read_bytes()).hexdigest(), "versions": {"river": RIVER_VERSION, "python": platform.python_version(), "pythonArchitecture": platform.machine()}, "weightPolicy": "equal-positive-negative", "timingCaveat": "Local diagnostic timings only; Python may run under translation while Gorse is native. No speed winner inferred.", "ownerAccuracyMeasured": False, "cases": [], "catalogAudit": (dataset.get("review") or {}).get("audit")}
+    report["study"] = dataset.get("study")
     if args.gorse_bin:
         from gorse_ranker import evaluate as gorse_evaluate
         build = subprocess.run([str(Path(args.gorse_bin).resolve()), "--version"], capture_output=True, text=True, check=True, timeout=20).stdout
