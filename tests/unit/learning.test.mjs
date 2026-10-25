@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -425,6 +425,48 @@ test("a stale local training lease becomes recoverable after interruption", asyn
     await service.train();
     assert.equal((await service.status()).job.state, "complete");
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("hosted status with pending feedback never opens a local training store", async () => {
+  const root = mkdtempSync(join(tmpdir(), "forme-hosted-status-"));
+  const previous = process.env.FORME_DATA_DIR;
+  const blocked = join(root, "no-local-storage");
+  writeFileSync(blocked, "fixture: local storage must not be opened");
+  process.env.FORME_DATA_DIR = blocked;
+  const records = [];
+  const repository = () => ({
+    async list(kind) {
+      return records.filter((row) => row.kind === kind);
+    },
+    async append(batch) {
+      for (const row of batch)
+        records.push({ ...row, ordinal: records.length + 1, recorded_at: at });
+      return batch.map((row) => row.id);
+    },
+    async selection() {
+      return { revision: 0, selected: null, history: [] };
+    },
+    close() {},
+  });
+  try {
+    const service = learningService({
+      root,
+      repository,
+      canTrain: false,
+      now: () => Date.parse(at),
+    });
+    await service.snapshot(profile, [item(1), item(2)]);
+    const status = await service.status();
+    assert.equal(status.canTrain, false);
+    assert.equal(status.job, null);
+    assert.equal(status.selection.selected, null);
+    assert.equal(records.filter((row) => row.kind === "context").length, 1);
+    await assert.rejects(service.train(), /owner’s computer/);
+  } finally {
+    if (previous === undefined) delete process.env.FORME_DATA_DIR;
+    else process.env.FORME_DATA_DIR = previous;
     rmSync(root, { recursive: true, force: true });
   }
 });

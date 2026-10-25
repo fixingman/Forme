@@ -64,7 +64,8 @@ test('Restore is named after the piece and removes only that row, persistently',
 test('no search for a short list; it appears for a long one and finds by brand, title or accented name',async({page})=>{
  await page.goto('/settings');await expect(page.getByRole('searchbox',{name:'Search hidden pieces'})).toHaveCount(0);
  const many=Array.from({length:8},(_,i)=>`vinted:97${String(i).padStart(3,'0')}`),extra=many.map((key,i)=>snap(key,i%2?'Lemaire':'Auralee',{title:i%2?`Linen trousers ${i}`:`Merino knit ${i}`}));
- await page.evaluate(([keys,notes])=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);s.dismissed=[...s.dismissed,...keys];s.tasteFeedback=[...s.tasteFeedback,...notes];localStorage.setItem('forme-v2',JSON.stringify(s));},[many,extra] as const);
+ // Seed on the next document before the persistent shell can write its initial state.
+ await page.addInitScript(value=>localStorage.setItem('forme-v2',JSON.stringify(value)),{...settings,dismissed:[...dismissed,...many],tasteFeedback:[...remembered,...extra]});
  await page.reload();await expect(rows(page)).toHaveCount(12);
  const search=page.getByRole('searchbox',{name:'Search hidden pieces'});await expect(search).toBeVisible();
  await search.fill('linen');await expect(rows(page)).toHaveCount(4);await expect(page.locator('.hidden-search-status')).toHaveText('Showing 4 of 12');
