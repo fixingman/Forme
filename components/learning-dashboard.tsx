@@ -330,6 +330,7 @@ export default function LearningDashboard({
                   {report.counts.positive} positive · {report.counts.style} style dislikes ·{" "}
                   {report.counts.material} material · {report.counts.color} colour ·{" "}
                   {report.counts.price} price · {report.counts.data} data reports ·{" "}
+                  {report.counts.unneeded ?? 0} not needed · {report.counts.similar ?? 0} similar ·{" "}
                   {report.counts.unknown} unknown motives · {report.counts.unscored} without prior
                   predictions
                 </p>

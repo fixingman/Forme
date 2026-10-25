@@ -12,6 +12,7 @@ Implemented in the working tree, 25 October 2026. Open **Collection tools → Le
 | Not my style | Explicit negative |
 | Not the right material / Not the right colour | Explicit but narrow: only the `material:` or `color:` trait of that piece counts as a dislike (and needs the usual two hides to affect ranking). No brand penalty, and not a taste-negative training label |
 | Too expensive | Retained price/context evidence, excluded from taste-negative labels |
+| Not needed / Already have something similar | Retained owner context about need, not about the piece. Excluded from taste-negative labels and from ranking: owning something similar says nothing against the piece, the brand or the style |
 | Incorrect size/category | Retained owner report, excluded from taste-negative labels; provider facts stay intact |
 | No reason | Unknown motive, excluded from taste-negative labels |
 

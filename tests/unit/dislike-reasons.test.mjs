@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {REASONS,REASON_LABELS,ATTRIBUTE_REASONS,isReason} from '../../lib/domain/dislike-reasons.mjs';
+import {REASONS,REASON_LABELS,REASON_GROUPS,ATTRIBUTE_REASONS,isReason} from '../../lib/domain/dislike-reasons.mjs';
 import * as learning from '../../lib/domain/learning.mjs';
 import {tasteProfile,normalizeTasteFeedback,feedbackSnapshot} from '../../lib/domain/taste-profile.mjs';
 import {recommendListings} from '../../lib/domain/recommendations.mjs';
@@ -14,9 +14,9 @@ const hidden=(item,reason)=>({...feedbackSnapshot(item),reason});
 const withHidden=(items,reason)=>({...base,dismissed:items.map(i=>i.sourceKey),tasteFeedback:items.map(i=>hidden(i,reason))});
 
 test('the reasons are one ordered list with a plain label each; taste reasons come first',()=>{
- assert.deepEqual(REASONS,['style','material','color','price','data','unspecified']);
+ assert.deepEqual(REASONS,['style','material','color','price','data','unneeded','similar','unspecified']);
  assert.deepEqual(Object.keys(REASON_LABELS),REASONS);
- assert.equal(REASON_LABELS.material,'Not the right material');assert.equal(REASON_LABELS.color,'Not the right colour');
+ assert.equal(REASON_LABELS.material,'Not the right material');assert.equal(REASON_LABELS.color,'Not the right colour');assert.equal(REASON_LABELS.unneeded,'Not needed');assert.equal(REASON_LABELS.similar,'Already have something similar');
  assert.ok(isReason('material')&&isReason('color')&&!isReason('colour')&&!isReason('brand')&&!isReason(undefined));
  assert.equal(learning.REASONS,REASONS,'the learning module re-exports the same list');assert.equal(learning.REASON_LABELS,REASON_LABELS);
  assert.deepEqual(ATTRIBUTE_REASONS,{material:'material:',color:'color:'});
@@ -44,7 +44,7 @@ test('"not the right colour" counts against the colour only',()=>{
 test('the existing reasons behave exactly as before: style is a general dislike; price, data and no-reason add no taste penalty',()=>{
  const style=tasteProfile(withHidden([woolA,woolB],'style'),[woolA,woolB]);
  assert.equal(style.negativeBrands.get('lemaire'),2);assert.equal(style.negativeTraits.get('material:wool'),2);assert.equal(style.negativeTraits.get('category:outerwear'),2);
- for(const reason of ['price','data','unspecified']){const p=tasteProfile(withHidden([woolA,woolB],reason),[woolA,woolB]);assert.equal(p.negativeTraits.size,0,reason);assert.equal(p.negativeBrands.size,0,reason);}
+ for(const reason of ['price','data','unneeded','similar','unspecified']){const p=tasteProfile(withHidden([woolA,woolB],reason),[woolA,woolB]);assert.equal(p.negativeTraits.size,0,reason);assert.equal(p.negativeBrands.size,0,reason);}
  const old=tasteProfile({...base,dismissed:[woolA.sourceKey],tasteFeedback:[feedbackSnapshot(woolA)]},[woolA]);assert.equal(old.negativeBrands.get('lemaire'),1,'a hide with no reason recorded still counts, for compatibility');
 });
 test('a reason only applies while the piece is still hidden; restoring removes its evidence',()=>{
@@ -107,4 +107,38 @@ test('hidden pieces can be found by the reason given, in words',()=>{
  const rows=hiddenEntries({keys:[woolA,woolB,cotton].map(i=>i.sourceKey),source:[woolA,woolB,cotton],remembered:[hidden(woolA,'material'),hidden(woolB,'color'),hidden(cotton,'price')]});
  const find=q=>searchHidden(rows,q).map(r=>r.key).sort();
  assert.deepEqual(find('right material'),['vinted:11']);assert.deepEqual(find('colour'),['vinted:12']);assert.deepEqual(find('expensive'),['vinted:13']);assert.deepEqual(find('not the right'),['vinted:11','vinted:12']);
+});
+
+// ---------------------------------------------------------------------------------- the dialog's groups
+test('the dialog groups every reason once, in three short questions, with "No reason" left out as a choice',()=>{
+ assert.deepEqual(REASON_GROUPS.map(g=>g.label),['The piece','The listing','Your needs']);
+ assert.deepEqual(REASON_GROUPS.map(g=>g.reasons),[['style','material','color'],['price','data'],['unneeded','similar']]);
+ const shown=REASON_GROUPS.flatMap(g=>g.reasons);
+ assert.deepEqual([...shown].sort(),REASONS.filter(r=>r!=='unspecified').sort(),'every real reason appears exactly once');
+ assert.equal(new Set(shown).size,shown.length);assert.equal(new Set(REASON_GROUPS.map(g=>g.id)).size,REASON_GROUPS.length);
+ for(const group of REASON_GROUPS)for(const reason of group.reasons)assert.ok(REASON_LABELS[reason],reason);
+});
+test('"not needed" and "already have something similar" are context only: they never become a taste dislike, a brand penalty or a ranking penalty',()=>{
+ for(const reason of ['unneeded','similar']){
+  assert.ok(isReason(reason));assert.equal(normalizeTasteFeedback([hidden(woolA,reason)])[0].reason,reason);
+  const p=tasteProfile(withHidden([woolA,woolB],reason),[woolA,woolB,cotton]);
+  assert.equal(p.negativeTraits.size,0,reason);assert.equal(p.negativeBrands.size,0,reason);assert.equal(p.hiddenCount,0,reason);
+  const asked=recommendListings([woolA,woolB,cotton],{...withHidden([woolA,woolB],reason),dismissed:[]},{signals:[woolA,woolB,cotton],now});
+  const plain=recommendListings([woolA,woolB,cotton],{...base},{signals:[woolA,woolB,cotton],now});
+  assert.deepEqual(asked.map(r=>[r.item.id,r.score]),plain.map(r=>[r.item.id,r.score]),`${reason} changes no score`);
+ }
+});
+test('the new reasons count under their own heading in the learning evidence, never as a style dislike or an unknown motive',()=>{
+ const events=[];let n=0;
+ const hide=(key,reason)=>{const id=`00000000-0000-4000-8000-${String(++n).padStart(12,'0')}`;events.push({id,ordinal:n,key,action:'dismiss',channel:'shopping',reason,item:piece(n,'A','Wool jacket')});};
+ hide('vinted:1','unneeded');hide('vinted:2','similar');hide('vinted:3','similar');hide('vinted:4','unspecified');hide('vinted:5','price');
+ const report=learning.evaluateEvidence({events,exposures:[],runs:[],channel:'shopping'});
+ assert.deepEqual([report.counts.unneeded,report.counts.similar,report.counts.unknown,report.counts.price,report.counts.style],[1,2,1,1,0]);
+ for(const value of Object.values(report.counts))assert.ok(Number.isFinite(value));
+});
+test('the hidden list offers the new reasons as filters, labelled and ordered, and finds them by words',()=>{
+ const rows=[['vinted:1','unneeded'],['vinted:2','similar'],['vinted:3','similar'],['vinted:4','color'],['vinted:5',undefined]].map(([key,reason])=>({key,brand:'A',traits:[],style:'',title:`Jacket ${key.slice(-1)}`,...(reason?{reason}:{})}));
+ const entries=hiddenEntries({keys:rows.map(r=>r.key),source:[],remembered:rows});
+ assert.deepEqual(entries.map(e=>e.reason),[undefined,'color','similar','similar','unneeded']);
+ assert.deepEqual(searchHidden(entries,'already have something similar').map(e=>e.key),['vinted:3','vinted:2']);assert.deepEqual(searchHidden(entries,'not needed').map(e=>e.key),['vinted:1']);
 });

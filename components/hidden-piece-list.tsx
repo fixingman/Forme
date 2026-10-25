@@ -92,7 +92,7 @@ export default function HiddenPieceList({
             <button
               key={option.value}
               type="button"
-              className="chip"
+              className={`chip ${active === option.value ? "active" : ""}`}
               aria-pressed={active === option.value}
               onClick={() => {
                 setFilter(option.value);

@@ -3446,10 +3446,29 @@ a.hidden-piece-name:hover strong {
 }
 
 /* Reason-aware feedback and measured learning share existing controls and disclosures. */
-.reason-options {
+.reason-groups {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-3);
+}
+.reason-group {
   display: grid;
   gap: var(--space-2);
-  margin: var(--space-5) 0;
+}
+.reason-group-title {
+  margin: 0;
+}
+.reason-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.reason-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 .toast-reason {
   font-size: 12px;

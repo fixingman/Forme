@@ -10,7 +10,15 @@ import {
   queueOperation,
   acknowledgeOperation,
 } from "./domain/learning-outbox.mjs";
-export type DislikeReason = "style" | "price" | "data" | "unspecified";
+export type DislikeReason =
+  | "style"
+  | "material"
+  | "color"
+  | "price"
+  | "data"
+  | "unneeded"
+  | "similar"
+  | "unspecified";
 type Operation = {
   id: string;
   action: "events" | "exposure";

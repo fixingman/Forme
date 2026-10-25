@@ -28,6 +28,7 @@ Not for me immediately hides the exact piece. No modal or reason is required bef
 | Save / Would save | Preserve the existing real-save versus preview-only distinction | Positive selection evidence at the displayed item/price snapshot; never infer purchase |
 | Not my style | Exact piece stays hidden | Explicit taste-negative example; bounded feature influence, never an automatic brand ban |
 | Too expensive | Exact piece stays hidden | Affordability evidence tied to displayed price, currency and category; no style-negative label or inferred permanent budget ceiling |
+| Not needed / Already have something similar | Exact piece stays hidden | Owner-reported context about need, not taste. Excluded from taste-negative training and ranking; never penalises the brand, style or traits (added 25 October) |
 | Incorrect size/category | Exact piece stays hidden | Owner-reported data-quality issue, excluded from taste-negative training; do not change provider facts or personal filters automatically |
 | No reason | Exact piece stays hidden | Unknown motive. Preserve generic rejection for an overall-selection diagnostic; do not invent a style/price/data-quality reason |
 | Undo / Restore | Reverse the relevant action under existing save/hide rules | Remove its active learning contribution through canonical replay; an opposite training example is not an erasure |

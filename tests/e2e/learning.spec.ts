@@ -90,7 +90,7 @@ async function mockLearning(page: Page, eligible = false) {
           ],
           reports: ["shopping", "preview"].map((channel) => ({
             channel,
-            counts: { positive: 0, style: 0, material: 0, color: 0, price: 0, data: 0, unknown: 0, unscored: 0 },
+            counts: { positive: 0, style: 0, material: 0, color: 0, price: 0, data: 0, unneeded: 0, similar: 0, unknown: 0, unscored: 0 },
             metric: "Only judged pairs count.",
             engines: Object.fromEntries(
               Object.keys(engines).map((name) => [
