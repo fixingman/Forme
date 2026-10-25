@@ -44,7 +44,7 @@ test('every hidden piece is recognisable: brand, title, thumbnail and where it i
 });
 test('newest hidden first',async({page})=>{
  await page.goto('/settings');
- expect(await rows(page).locator('strong').allInnerTexts()).toEqual(['Lemaire','Comme des Garçons','Studio Nicholson','Vinted listing 96003']);
+ await expect(rows(page).locator('strong')).toHaveText(['Lemaire','Comme des Garçons','Studio Nicholson','Vinted listing 96003']);
 });
 test('a thumbnail that cannot load becomes a quiet icon, not a block of text, and is hidden from screen readers',async({page})=>{
  await page.goto('/settings');const old=row(page,'Studio Nicholson');

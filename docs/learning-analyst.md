@@ -48,7 +48,7 @@ The server reserves the full estimate before sending, enforces per-run and UTC-d
 
 ## Storage and removal
 
-The owner-only, local-computer API is `/api/learning-analysis`; mutations require same-origin JSON. Packets, reports and comparisons live in `.forme-data/learning-analysis.sqlite` (or the isolated `FORME_DATA_DIR`). Hosted training/analysis is unavailable; signed-in journal access still depends on the unapplied hosted learning migration.
+The owner-only, local-computer API is `/api/learning-analysis`; mutations require same-origin JSON. Packets, reports and comparisons live in `.forme-data/learning-analysis.sqlite` (or the isolated `FORME_DATA_DIR`). Hosted training/analysis is unavailable; the hosted journal schema/access checks passed on 25 October, while real phone delivery still needs verification.
 
 **Download private learning history** includes analyst artifacts. Existing backup tooling includes this SQLite file. **Delete learning history** removes this owner's analyst packets, reports and comparisons together with the learning journal; it is blocked while a provider request is running. Minimal billing reservations remain, so privacy deletion cannot reset a spending limit. Previously downloaded files and independent backups remain separate copies.
 

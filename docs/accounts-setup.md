@@ -25,7 +25,7 @@ Three independent locks keep it private. Break one and the others still hold:
 supabase.com → New project. Pick a region near Sweden. Save the database password somewhere safe (you will not need it day to day).
 
 ### 2. Create the tables
-SQL Editor → paste `supabase/migrations/20261022000000_private_beta.sql` → Run. Then invite yourself (lowercase):
+For a fresh project, apply `supabase/migrations/20261022000000_private_beta.sql`, followed by `supabase/migrations/20261025000000_learning.sql`. Confirm existing schema before applying either file; the current project already has both schemas. Then invite yourself (lowercase):
 
 ```sql
 insert into public.allowed_users (email, role) values ('you@example.com', 'owner');

@@ -1,6 +1,6 @@
 # Taste learning and evaluation
 
-Implemented in the working tree, 25 October 2026. Open **Collection tools → Learning and evaluation** (`/tools/learning`). The hosted schema migration is written and locally tested; applying it to Supabase and verifying real cross-device delivery remain deployment work. Current stays selected until a candidate passes the gate and the owner activates it.
+Implemented in the working tree, 25 October 2026. Open **Collection tools → Learning and evaluation** (`/tools/learning`). The hosted learning tables and RPCs were confirmed live on 25 October, including signed-out denial and matching reads from two independent owner sessions. Physical-phone delivery and the released app flow remain separate verification work. Current stays selected until a candidate passes the gate and the owner activates it.
 
 ## What feedback means
 

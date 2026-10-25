@@ -12,9 +12,9 @@ Reviewed 25 October 2026. These are operational procedures; see [current state](
 
 A configured hosted build can use Supabase authentication, profiles and published listings. Collection APIs remain unavailable there: hosted browsing is not a staging collector.
 
-## Temporary learning-release hold
+## Learning release order
 
-On 25 October, `vercel.json` temporarily sets `git.deploymentEnabled.main=false`. The learning tables were confirmed missing through the hosted REST schema. This allows merging and verifying GitHub CI while the existing production deployment continues serving. Preview branches remain enabled. Remove this hold only after applying/confirming `20261025000000_learning.sql` and checking signed-in owner access, then push the release commit and verify its Vercel deployment before real-device testing. See [Vercel's Git configuration reference](https://vercel.com/docs/project-configuration/git-configuration).
+Apply/confirm the learning schema and owner access before promoting code that uses it. On 25 October, a temporary `vercel.json` held automatic `main` deployments while the learning tables were missing. Both tables, all three RPCs, anonymous denial and independent owner-session access then passed live checks. The release removes that temporary hold, restoring normal Git-based deployment. See [Vercel's Git configuration reference](https://vercel.com/docs/project-configuration/git-configuration). Physical-phone feedback remains a separate end-to-end check.
 
 ## Continuous integration
 
