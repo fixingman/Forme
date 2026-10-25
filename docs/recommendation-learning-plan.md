@@ -1,6 +1,6 @@
 # Recommendation learning and evaluation plan
 
-Original design, 24 October 2026; implementation update, 25 October. The owner approved implementing the full sequence (“cant we implement all 5?”). The local implementation now covers evidence delivery, optional reasons, frozen evaluation, actual reason-aware candidates and owner-controlled promotion/rollback. Read [the implemented contract](learning-loop.md) for exact behavior and deployment boundaries. The detailed proposals below are design context, not a claim that every future extension is shipped. No external LLM evaluator is implemented or authorized.
+Original design, 24 October 2026; implementation update, 25 October. The owner approved implementing the full sequence (“cant we implement all 5?”). The local implementation now covers evidence delivery, optional reasons, frozen evaluation, actual reason-aware candidates and owner-controlled promotion/rollback. Read [the implemented contract](learning-loop.md) for exact behavior and deployment boundaries. The detailed proposals below are design context, not a claim that every future extension is shipped. The later-approved [advisory LLM analyst](learning-analyst.md) is implemented, with its provider unconfigured at the owner's request. It diagnoses development evidence; it is not a taste judge and no live LLM call is authorized by implementation alone.
 
 ## Product objective and current boundary
 

@@ -61,6 +61,12 @@ Keep revealed depth when pieces are hidden, saved, reordered or updated in the b
 - Recoverable read failures retain usable content and provide retry. Background read failures do not replace the last good collection.
 - Keep experimental/model setup details inside Collection tools. Normal shopping should not expose runtime or model infrastructure controls.
 
+## Learning tools
+
+Use the standard 19px section headings and 14px body copy, with 16–24px between distinct ideas and action groups. Put the selected ranking and the feedback task first. The analysis disclosure is **Recommendation analysis**, with a short description, separate provider/manual-review status and a three-step Prepare → Review → Test workflow.
+
+Keep one primary action for the current task: prepare evidence, then download the manual-review packet or review a configured provider request. Reports separate their summary, cited findings, proposed test and comparison action. Privacy/loop explanations, feedback breakdowns, exact activation criteria and history management use labelled disclosures rather than introductory paragraphs. Keep all spending/activation confirmations and keyboard/touch targets intact. Stack the overview and controls on phones; do not shrink text to fit.
+
 ## Maintenance
 
 Format UI changes with `npm run format:ui`; check with `npm run check:format:ui`. Prefer named page components and explicit action callbacks. `forme.tsx` owns persistent state and coordinates actions; page views should not create competing preference stores.

@@ -245,7 +245,7 @@ export default function LearningDashboard({
       </Link>
       <Header
         title="Learning and evaluation"
-        description="Your judgments are the reference. Train candidates, check later predictions and control what Discover uses."
+        description="Learn from your saves and dislikes, compare recommendations and choose what Discover uses."
       />
       {(message || outbox.error) && (
         <p className="notice" role="status">
@@ -260,50 +260,81 @@ export default function LearningDashboard({
           </button>
         </p>
       )}
-      <section className="panel">
-        <h2>Live ranking</h2>
-        <p>
-          {status?.selection.selected
-            ? `${names[status.selection.selected.engine]} · selected version ${status.selection.selected.runId.slice(0, 8)}`
-            : "Current remains selected."}
-        </p>
-        <p className="small">
-          Learning never changes your sizes, departments, excluded brands or collection budget. A
-          model switch requires evidence and your confirmation.
-        </p>
-        {status?.selection.selected && (
+      <div className="learning-overview">
+        <section className="panel learning-section">
+          <h2>Live ranking</h2>
+          <p className="learning-current-value">
+            {status?.selection.selected
+              ? `${names[status.selection.selected.engine]} · selected version ${status.selection.selected.runId.slice(0, 8)}`
+              : "Current remains selected."}
+          </p>
+          <p className="small">
+            Switching to a candidate needs evidence and your approval. Your shopping filters still
+            apply.
+          </p>
+          {status?.selection.selected && (
+            <button
+              className="btn light"
+              disabled={busy}
+              onClick={() => void select(undefined, "current")}
+            >
+              Return to Current
+            </button>
+          )}
+        </section>
+        <section className="panel learning-section">
+          <h2>Give fresh feedback</h2>
+          <p>
+            Compare the same pieces across Current, River and Gorse. Your preview votes help
+            evaluate the next version.
+          </p>
+          <p className="small">Preview votes stay separate from your saves and hidden pieces.</p>
           <button
-            className="btn light"
-            disabled={busy}
-            onClick={() => void select(undefined, "current")}
+            className="btn"
+            disabled={busy || outbox.pending > 0 || !items.length || !identity}
+            onClick={() => void create()}
           >
-            Return to Current
+            {busy ? "Preparing…" : "Create learning comparison"}
           </button>
-        )}
-      </section>
-      <section className="panel">
-        <h2>Forward evidence</h2>
+        </section>
+      </div>
+      <section className="panel learning-section">
+        <h2>Recommendation quality</h2>
         <p>
-          {status?.events ?? 0} recorded feedback events. Predictions are evaluated before their
-          answers can train later versions.
+          {status?.events ?? 0} feedback events recorded. New votes evaluate earlier rankings before
+          they train the next version.
         </p>
-        <p className="small">
-          Initial review gate: at least 20 scored decisions, including 5 positive and 5 explicit
-          style dislikes, paired comparisons across 5 different days, and a positive conservative
-          lower bound with a useful gain. This is a screening policy, not proof from a tiny sample.
-        </p>
+        <details className="learning-disclosure">
+          <summary>When can I change the ranking?</summary>
+          <div className="learning-detail-body">
+            <p>
+              Each candidate needs at least 20 scored decisions, including 5 positives and 5
+              explicit style dislikes, plus 20 paired comparisons across 5 days. It must improve
+              over Current by at least 0.05 with a positive conservative lower bound.
+            </p>
+            <p>
+              This is an initial screening rule, not proof of recommendation quality. You review and
+              approve any switch.
+            </p>
+          </div>
+        </details>
         {status?.reports.map((report) => (
           <div className="learning-report" key={report.channel}>
             <h3>
               {report.channel === "preview" ? "Private preview judgments" : "Shopping judgments"}
             </h3>
-            <p className="small">
-              {report.counts.positive} positive · {report.counts.style} style dislikes ·{" "}
-              {report.counts.material} material · {report.counts.color} colour ·{" "}
-              {report.counts.price} price · {report.counts.data} data reports ·{" "}
-              {report.counts.unknown} unknown motives · {report.counts.unscored} without prior
-              predictions
-            </p>
+            <details className="learning-disclosure learning-breakdown">
+              <summary>Feedback breakdown</summary>
+              <div className="learning-detail-body">
+                <p className="small">
+                  {report.counts.positive} positive · {report.counts.style} style dislikes ·{" "}
+                  {report.counts.material} material · {report.counts.color} colour ·{" "}
+                  {report.counts.price} price · {report.counts.data} data reports ·{" "}
+                  {report.counts.unknown} unknown motives · {report.counts.unscored} without prior
+                  predictions
+                </p>
+              </div>
+            </details>
             <div className="feedback-table-wrap">
               <table className="feedback-table">
                 <thead>
@@ -391,54 +422,47 @@ export default function LearningDashboard({
             Train next candidates
           </button>
         )}
-        <button
-          className="textbutton"
-          onClick={async () => {
-            try {
-              const value = await fetch("/api/learning?export=1", { cache: "no-store" });
-              if (!value.ok) throw Error("History export unavailable.");
-              const blob = await value.blob(),
-                url = URL.createObjectURL(blob),
-                link = document.createElement("a");
-              link.href = url;
-              link.download = "forme-learning-history.json";
-              link.click();
-              URL.revokeObjectURL(url);
-            } catch (e) {
-              setMessage((e as Error).message);
-            }
-          }}
-        >
-          Download private learning history
-        </button>
-        <button
-          className="textbutton danger"
-          disabled={busy || outbox.pending > 0 || !status?.canTrain}
-          onClick={() => setDeleting(true)}
-        >
-          Delete learning history
-        </button>
       </section>
       <LearningAnalyst pendingFeedback={outbox.pending} />
-      <section className="panel">
-        <h2>Give fresh feedback</h2>
-        <p>
-          Compare Current, River and Gorse on the same eligible pieces. Would save is a preview
-          opinion and does not save the piece in FORME. Add a reason after Not for me to separate
-          taste from price or listing issues.
-        </p>
-        <p className="small">
-          Earlier study files stay separate. Unknown motives are not relabelled as style dislikes.
-          Unavailable or cold-start models are labelled explicitly.
-        </p>
-        <button
-          className="btn"
-          disabled={busy || outbox.pending > 0 || !items.length || !identity}
-          onClick={() => void create()}
-        >
-          {busy ? "Preparing…" : "Create learning comparison"}
-        </button>
-      </section>
+
+      <details className="panel learning-history learning-disclosure">
+        <summary>Learning history</summary>
+        <div className="learning-detail-body">
+          <p>
+            Keep a private copy of your feedback and analysis, or clear the learning history. Your
+            saved and hidden pieces are kept.
+          </p>
+          <div className="learning-actions">
+            <button
+              className="textbutton"
+              onClick={async () => {
+                try {
+                  const value = await fetch("/api/learning?export=1", { cache: "no-store" });
+                  if (!value.ok) throw Error("History export unavailable.");
+                  const blob = await value.blob(),
+                    url = URL.createObjectURL(blob),
+                    link = document.createElement("a");
+                  link.href = url;
+                  link.download = "forme-learning-history.json";
+                  link.click();
+                  URL.revokeObjectURL(url);
+                } catch (e) {
+                  setMessage((e as Error).message);
+                }
+              }}
+            >
+              Download private learning history
+            </button>
+            <button
+              className="textbutton danger"
+              disabled={busy || outbox.pending > 0 || !status?.canTrain}
+              onClick={() => setDeleting(true)}
+            >
+              Delete learning history
+            </button>
+          </div>
+        </div>
+      </details>
       {staleComparison && (
         <p className="notice" role="status">
           Your preferences or inventory changed. Create a fresh learning comparison before rating

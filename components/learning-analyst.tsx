@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import Dialog from "./ui/dialog";
 import { formatDateTime } from "@/lib/domain/presentation.mjs";
 type Fact = { id: string; [key: string]: unknown };
@@ -90,7 +91,13 @@ const names: Record<string, string> = {
   "river-regularized": "River · conservative",
   gorse: "Gorse",
 };
-const usd = (value: number) => "$" + value.toFixed(4);
+const usd = (value: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 6,
+  }).format(value);
 async function api(body?: unknown) {
   const response = await fetch("/api/learning-analysis", {
     cache: "no-store",
@@ -239,206 +246,252 @@ export default function LearningAnalyst({ pendingFeedback = 0 }: { pendingFeedba
       Number(packet.payload.evidence[0]?.decisions) >= 2;
   return (
     <details className="panel analyst-panel">
-      <summary>
-        <strong>LLM failure analysis</strong>
-        <span className="small"> Explain mistakes and propose tests</span>
+      <summary className="analyst-heading">
+        <div>
+          <h2>Recommendation analysis</h2>
+          <p>Understand your feedback and find the next thing to test.</p>
+        </div>
+        <ChevronDown aria-hidden="true" />
       </summary>
-      <p>
-        Your judgments remain the taste reference. The analyst reviews development evidence and
-        proposes changes for review.
-      </p>
-      <p className="small analyst-cycle">
-        Selected version → future rankings → your feedback → evaluation → next candidates → review →
-        selected version.
-      </p>
-      {message && (
-        <p className="notice" role="status">
-          {message}
-        </p>
-      )}
-      <p className="small">
-        {status?.configuration.configured
-          ? `${status.configuration.provider} · ${status.configuration.model}. Reserved today: ${usd(status.reservedUsd)} of ${usd(status.configuration.dailyUsd)}.`
-          : "Provider not configured. Export and import are available; no model calls are enabled."}
-      </p>
-      <div className="analyst-controls">
-        <label>
-          Feedback source
-          <select value={channel} onChange={(event) => setChannel(event.target.value)}>
-            <option value="shopping">Shopping judgments</option>
-            <option value="preview">Private preview judgments</option>
-          </select>
-        </label>
-        <button
-          className="btn light"
-          disabled={busy || pendingFeedback > 0 || !status}
-          onClick={() => void prepare()}
-        >
-          Prepare evidence
-        </button>
-        <button className="textbutton" disabled={busy} onClick={() => void reload()}>
-          Refresh analysis history
-        </button>
-      </div>
-      {pendingFeedback > 0 && (
-        <p className="small">Sync pending feedback before preparing an analysis.</p>
-      )}
-      {packet && (
-        <section className="analyst-packet" aria-label="Prepared analysis evidence">
-          <h3>Prepared {packet.channel === "preview" ? "preview" : "shopping"} evidence</h3>
-          <p className="small">
-            {formatDateTime(packet.createdAt)} ·{" "}
-            {Number(packet.payload.evidence[0]?.decisions ?? 0)} development judgments. Account
-            details, listing links, images, raw titles and future validation answers are omitted.
-            Text traits remain inference.
+      <div className="analyst-body">
+        <div className="analyst-availability">
+          <span className="learning-status">
+            {status?.configuration.configured ? "Provider connected" : "Manual review"}
+          </span>
+          <p>
+            {status?.configuration.configured
+              ? `${status.configuration.provider} · ${status.configuration.model}. Reserved today: ${usd(status.reservedUsd)} of ${usd(status.configuration.dailyUsd)}.`
+              : "Provider not configured. Prepare a private evidence packet, review it with a model of your choice, then import its report here."}
           </p>
-          {packet.stale && (
-            <p className="notice">
-              Feedback or candidates changed. Prepare fresh evidence before a provider call or new
-              tracked comparison.
-            </p>
-          )}
-          <details className="analyst-evidence">
-            <summary>Review the exact evidence packet</summary>
-            <pre>{JSON.stringify(packet.export, null, 2)}</pre>
-          </details>
-          <div className="inline">
-            <button
-              className="btn light"
-              onClick={() => download(packet.export, "forme-analysis-packet.json")}
-            >
-              Download evidence packet
-            </button>
-            <button
-              className="btn light"
-              disabled={busy}
-              onClick={() => {
-                setReportText("");
-                setImporting(true);
-              }}
-            >
-              Import analyst report
-            </button>
-            {status?.configuration.configured && (
+        </div>
+        <ol className="analyst-steps" aria-label="Analysis workflow">
+          <li>
+            <span>1</span>Prepare evidence
+          </li>
+          <li>
+            <span>2</span>Review a report
+          </li>
+          <li>
+            <span>3</span>Test with new votes
+          </li>
+        </ol>
+        <div className="analyst-controls">
+          <label>
+            Feedback source
+            <select value={channel} onChange={(event) => setChannel(event.target.value)}>
+              <option value="shopping">Shopping feedback</option>
+              <option value="preview">Private preview feedback</option>
+            </select>
+          </label>
+          <button
+            className={packet ? "btn light" : "btn"}
+            disabled={busy || pendingFeedback > 0 || !status}
+            onClick={() => void prepare()}
+          >
+            {busy ? "Working…" : "Prepare evidence"}
+          </button>
+          <button
+            className="textbutton analyst-refresh"
+            aria-label="Refresh analysis history"
+            disabled={busy}
+            onClick={() => void reload()}
+          >
+            <RefreshCw aria-hidden="true" /> Refresh
+          </button>
+        </div>
+        {message && (
+          <p className="notice" role="status">
+            {message}
+          </p>
+        )}
+        {pendingFeedback > 0 && <p>Sync pending feedback before preparing an analysis.</p>}
+        {packet && (
+          <section className="analyst-packet" aria-label="Prepared analysis evidence">
+            <div className="learning-section-heading">
+              <div>
+                <h3>Evidence ready</h3>
+                <p>
+                  {Number(packet.payload.evidence[0]?.decisions ?? 0)} development judgments ·{" "}
+                  {packet.channel === "preview" ? "Private preview" : "Shopping"}
+                </p>
+              </div>
+              <p className="small">{formatDateTime(packet.createdAt)}</p>
+            </div>
+            {packet.stale && (
+              <p className="notice">
+                Feedback or candidates changed. Prepare fresh evidence before a provider call or new
+                tracked comparison.
+              </p>
+            )}
+            <details className="analyst-evidence">
+              <summary>Review the exact evidence packet</summary>
+              <pre>{JSON.stringify(packet.export, null, 2)}</pre>
+            </details>
+            <div className="learning-actions">
               <button
-                className="btn"
-                disabled={busy || pendingFeedback > 0 || !canRun}
+                className={status?.configuration.configured ? "btn light" : "btn"}
+                onClick={() => download(packet.export, "forme-analysis-packet.json")}
+              >
+                Download evidence packet
+              </button>
+              <button
+                className="btn light"
+                disabled={busy}
                 onClick={() => {
-                  setConsent(false);
-                  setConfirming(true);
+                  setReportText("");
+                  setImporting(true);
                 }}
               >
-                Review provider request
+                Import analyst report
               </button>
+              {status?.configuration.configured && (
+                <button
+                  className="btn"
+                  disabled={busy || pendingFeedback > 0 || !canRun}
+                  onClick={() => {
+                    setConsent(false);
+                    setConfirming(true);
+                  }}
+                >
+                  Review provider request
+                </button>
+              )}
+            </div>
+            {packet.quote && (
+              <p className="small">
+                Conservative estimate: up to {usd(packet.quote.maxUsd)}, using configured model
+                rates and at most {packet.quote.maxOutputTokens} output tokens.{" "}
+                {packet.quote.withinRunLimit ? "" : "This exceeds the configured per-run limit."}{" "}
+                Provider billing is authoritative.
+              </p>
             )}
-          </div>
-          {packet.quote && (
-            <p className="small">
-              Conservative estimate: up to {usd(packet.quote.maxUsd)}, using configured model rates
-              and at most {packet.quote.maxOutputTokens} output tokens.{" "}
-              {packet.quote.withinRunLimit ? "" : "This exceeds the configured per-run limit."}{" "}
-              Provider billing is authoritative.
-            </p>
-          )}
-          {call && (
-            <p className="small">
-              Provider attempt: {call.status}. Reserved {usd(call.reservedUsd)}. This packet cannot
-              send another request.
-            </p>
-          )}
-        </section>
-      )}
-      {!!status?.reports.length && (
-        <section aria-label="Analyst reports">
-          <h3>Advisory reports</h3>
-          {status.reports.map((report) => (
-            <article className="analyst-report" key={report.id}>
+            {call && (
               <p className="small">
-                {formatDateTime(report.createdAt)} ·{" "}
-                {report.origin === "imported"
-                  ? "Imported · model origin unverified"
-                  : `${report.provider} · ${report.model}`}{" "}
-                {report.stale ? "· Historical snapshot" : ""}
+                Provider attempt: {call.status}. Reserved {usd(call.reservedUsd)}. This packet
+                cannot send another request.
               </p>
-              <p>{report.data.summary}</p>
-              {report.data.findings.map((finding) => (
-                <div className="analyst-finding" key={finding.id}>
-                  <p>{finding.finding}</p>
-                  <p className="small">
-                    Author confidence: {finding.confidence}; advisory, not statistical evidence.
-                  </p>
-                  <Evidence ids={finding.evidenceIds} facts={report.evidence} />
-                </div>
-              ))}
-              {report.data.proposals.map((proposal) => {
-                const tracked = status.experiments.some(
-                  (row) => row.reportId === report.id && row.proposalId === proposal.id,
-                );
-                return (
-                  <div className="analyst-proposal" key={proposal.id}>
-                    <h4>{labels[proposal.kind] ?? proposal.kind}</h4>
-                    <p>{proposal.rationale}</p>
-                    <p className="small">
-                      <strong>Test:</strong> {proposal.testPlan}
-                    </p>
-                    <Evidence ids={proposal.evidenceIds} facts={report.evidence} />
-                    {proposal.candidate ? (
-                      <button
-                        className="btn light"
-                        disabled={busy || report.stale || tracked || pendingFeedback > 0}
-                        onClick={() => void track(report, proposal)}
-                      >
-                        {tracked
-                          ? "Comparison tracked"
-                          : `Track future ${names[proposal.candidate]} comparison`}
-                      </button>
-                    ) : (
-                      <p className="small">
-                        Draft proposal: needs a reviewed implementation before it can be tested.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-              {report.data.limitations.map((value, index) => (
-                <p className="small" key={index}>
-                  {value}
+            )}
+          </section>
+        )}
+        {!!status?.reports.length && (
+          <section aria-label="Analyst reports">
+            <div className="learning-section-heading">
+              <div>
+                <h3>Reports</h3>
+                <p>Review the findings before choosing a comparison.</p>
+              </div>
+            </div>
+            {status.reports.map((report) => (
+              <article className="analyst-report" key={report.id}>
+                <p className="small">
+                  {formatDateTime(report.createdAt)} ·{" "}
+                  {report.origin === "imported"
+                    ? "Imported · model origin unverified"
+                    : `${report.provider} · ${report.model}`}{" "}
+                  {report.stale ? "· Historical snapshot" : ""}
                 </p>
-              ))}
-            </article>
-          ))}
-        </section>
-      )}
-      {!!status?.experiments.length && (
-        <section aria-label="Tracked analysis comparisons">
-          <h3>Future evidence</h3>
-          {status.experiments.map((experiment) => (
-            <article className="analyst-report" key={experiment.id}>
-              <h4>
-                {names[experiment.candidate]} ·{" "}
-                {experiment.channel === "preview" ? "private preview" : "shopping"}
-              </h4>
-              <p className="small">
-                Started {formatDateTime(experiment.createdAt)}. Only predictions and judgments after
-                this comparison started count.
-              </p>
-              <p>
-                {experiment.evidence.status.replaceAll("-", " ")} · {experiment.evidence.pairs}{" "}
-                judged pairs across {experiment.evidence.days} days.
-              </p>
-              <p className="small">
-                Future rankings and your later votes update this comparison. Use the activation
-                review above to choose a version when enough evidence exists.
-              </p>
-            </article>
-          ))}
-        </section>
-      )}
-      <p className="small">
-        Reports are advisory. Proposals cannot change your preferences, labels, collection budget or
-        selected version. Learning-history export includes these reports; deleting learning history
-        removes them while retaining billing reservations.
-      </p>
+                <p className="analyst-report-summary">{report.data.summary}</p>
+                {report.data.findings.map((finding) => (
+                  <div className="analyst-finding" key={finding.id}>
+                    <p>{finding.finding}</p>
+                    <p className="small">
+                      Author confidence: {finding.confidence}; advisory, not statistical evidence.
+                    </p>
+                    <Evidence ids={finding.evidenceIds} facts={report.evidence} />
+                  </div>
+                ))}
+                {report.data.proposals.map((proposal) => {
+                  const tracked = status.experiments.some(
+                    (row) => row.reportId === report.id && row.proposalId === proposal.id,
+                  );
+                  return (
+                    <div className="analyst-proposal" key={proposal.id}>
+                      <h4>{labels[proposal.kind] ?? proposal.kind}</h4>
+                      <p>{proposal.rationale}</p>
+                      <div className="analyst-test-plan">
+                        <span className="eyebrow">How to test</span>
+                        <p>{proposal.testPlan}</p>
+                      </div>
+                      <Evidence ids={proposal.evidenceIds} facts={report.evidence} />
+                      {proposal.candidate ? (
+                        <button
+                          className="btn light"
+                          disabled={busy || report.stale || tracked || pendingFeedback > 0}
+                          onClick={() => void track(report, proposal)}
+                        >
+                          {tracked
+                            ? "Comparison tracked"
+                            : `Track future ${names[proposal.candidate]} comparison`}
+                        </button>
+                      ) : (
+                        <p className="small">
+                          Draft proposal: needs a reviewed implementation before it can be tested.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+                {report.data.limitations.map((value, index) => (
+                  <p className="small" key={index}>
+                    {value}
+                  </p>
+                ))}
+              </article>
+            ))}
+          </section>
+        )}
+        {!!status?.experiments.length && (
+          <section aria-label="Tracked analysis comparisons">
+            <div className="learning-section-heading">
+              <div>
+                <h3>Tracked comparisons</h3>
+                <p>Only new rankings and the votes that follow them count.</p>
+              </div>
+            </div>
+            {status.experiments.map((experiment) => (
+              <article className="analyst-report" key={experiment.id}>
+                <h4>
+                  {names[experiment.candidate]} ·{" "}
+                  {experiment.channel === "preview" ? "private preview" : "shopping"}
+                </h4>
+                <p className="small">
+                  Started {formatDateTime(experiment.createdAt)}. Only predictions and judgments
+                  after this comparison started count.
+                </p>
+                <p>
+                  {experiment.evidence.status.replaceAll("-", " ")} · {experiment.evidence.pairs}{" "}
+                  judged pairs across {experiment.evidence.days} days.
+                </p>
+                <p className="small">
+                  Future rankings and your later votes update this comparison. Use the activation
+                  review above to choose a version when enough evidence exists.
+                </p>
+              </article>
+            ))}
+          </section>
+        )}
+        <details className="learning-disclosure analyst-help">
+          <summary>Privacy and how this works</summary>
+          <div className="learning-detail-body">
+            <p>
+              Your votes remain the taste reference. Reports suggest investigations; they cannot
+              change your preferences, labels, budget or selected version.
+            </p>
+            <p>
+              Packets omit account details, listing links, images, raw titles and future validation
+              answers. Text traits remain inference.
+            </p>
+            <p>
+              The loop continues after review: your selected version produces rankings, your votes
+              evaluate them, and new candidates return for review.
+            </p>
+            <p>
+              Learning-history export includes analyst reports. Deleting history removes the reports
+              while keeping billing reservations.
+            </p>
+          </div>
+        </details>
+      </div>
       {importing && packet && (
         <Dialog title="Import analyst report" close={() => setImporting(false)}>
           <p>

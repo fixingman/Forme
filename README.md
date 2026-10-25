@@ -31,6 +31,7 @@ Supabase configuration enables account sync. Enforced local sign-in uses `FORME_
 - Feeds reveal more existing pieces as you scroll. Browsing, saving and filtering make no paid collection or translation requests.
 - Manual refresh opens a free cost quote before a separate explicit paid-run confirmation. Caps, reservations and checkpoints remain in force, including when the daily limit is explicitly off.
 - The [learning loop](docs/learning-loop.md) adds optional feedback reasons, durable history, frozen evaluation and owner-approved River/Gorse version selection. Hosted migration application remains pending.
+- The [advisory analyst](docs/learning-analyst.md) prepares private development evidence, imports cited reports and tracks future comparisons. Its provider is unconfigured; preparing evidence makes no LLM call.
 - The private local [ranking preview](docs/ranking-preview.md) compares Current, River and Gorse. Preview ratings stay separate from account saves; Current remains the default ranker.
 
 ## Code layout

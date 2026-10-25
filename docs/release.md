@@ -1,6 +1,6 @@
 # Release basics
 
-Reviewed 24 October 2026. These are operational procedures, not evidence that a service is healthy or deployed today. Supabase has dated live verification; hosted web deployment, monitoring and offsite recovery remain pending. See [current state](project-state.md).
+Reviewed 25 October 2026. These are operational procedures; see [current state](project-state.md) for dated verification. The existing Vercel endpoint responds and enforces signed-out access. Deployment of the new learning release, real two-device sync, monitoring and offsite recovery still need verification.
 
 ## Environments
 
@@ -8,7 +8,7 @@ Reviewed 24 October 2026. These are operational procedures, not evidence that a 
 |---|---|---|
 | Local | `npm run dev`, with `.env.local`, `.forme-data/` and `public/data/vinted.json` | Real, collected with your own provider key |
 | CI | GitHub Actions on every pull request and push to `main` | Fixtures only; no provider key, no network collection |
-| Staging / production | No verified web deployment | Supabase reads/auth exist; deployment and phone validation remain |
+| Production | Existing Vercel site at `https://forme-kohl.vercel.app`; signed-out gates verified on 25 October | New learning release, hosted migration and signed-in phone validation remain |
 
 A configured hosted build can use Supabase authentication, profiles and published listings. Collection APIs remain unavailable there: hosted browsing is not a staging collector.
 

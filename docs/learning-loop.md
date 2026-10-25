@@ -52,12 +52,39 @@ The initial, fixed screening gate requires, **per candidate**:
 
 This is a screening policy, not a calibrated guarantee or full-feed accuracy estimate. Exposure/position selection bias remains; five days from one owner are correlated personal evidence. The UI reports insufficient evidence rather than a winner when requirements fail. Same-pool reranking does not establish retrieval superiority. The existing separate blind preview remains available; independently randomized discovery experiments are future work.
 
-Passing the gate enables **Review activation**, then a confirmation pins the exact version. Preview-trained versions additionally require the consent checkbox. The API independently enforces the gate and optimistic selection revision, rejecting stale-tab selection. **Return to Current** is always available. No automatic promotion, code-writing agent, LLM judge, paid call or routing change is part of this loop.
+Passing the gate enables **Review activation**, then a confirmation pins the exact version. Preview-trained versions additionally require the consent checkbox. The API independently enforces the gate and optimistic selection revision, rejecting stale-tab selection. **Return to Current** is always available. No automatic promotion, code-writing agent, LLM taste judge or routing change is part of this loop. The separately approved [advisory analyst](learning-analyst.md) is implemented with its provider unconfigured; it cannot select an engine or make calls merely by browsing/training.
+
+## The loop continues after review
+
+```mermaid
+flowchart TD
+    S[Selected version: Current or an approved candidate] --> R[Freeze future rankings and exposures]
+    R --> V[Owner feedback]
+    V --> E[Evaluate predictions made before the votes]
+    V --> T[Train next fixed candidate versions]
+    T --> R
+    E --> G[Evidence gate and owner review]
+    G -->|Activate an eligible version| S
+    G -->|Keep current version| S
+    T --> D[Freeze development evidence]
+    D --> A[Optional advisory LLM analysis]
+    A --> P[Owner reviews cited findings and proposals]
+    P -->|Track an existing candidate| F[Record future prediction and feedback boundary]
+    F --> R
+    E --> C[Future-only tracked comparison report]
+    C --> G
+    P -->|Feature or code proposal| I[Separate reviewed implementation]
+    I --> T
+```
+
+Selection is not an endpoint: it determines later rankings. Feedback evaluates what was shown before it can train a subsequent version. Keeping the current version also continues generating evidence. A frozen visit is not reordered mid-review, and the selected version never follows new training automatically.
+
+The analyst uses development evidence already represented in training, not future validation answers. Its proposals can start a tracked comparison only after owner review. That comparison excludes existing predictions and votes, so explaining an old benchmark cannot certify a new candidate. Code/feature proposals require implementation and testing before entering the candidate loop. Collection and translation supply upstream data through their existing manual authorization flows; neither is required or triggered by this cycle. See [analyst workflow and safeguards](learning-analyst.md).
 
 ## Export, deletion and verification
 
-**Download private learning history** exports events, exposures, frozen contexts/runs and selection audit history. Existing local backup tooling already includes every `.forme-data/*.sqlite` file via consistent SQLite snapshots, including this journal. Model-process scratch files are not part of that backup; frozen recipes/orders remain in the journal. Hosted journals need their own account/database backup arrangements.
+**Download private learning history** exports events, exposures, frozen contexts/runs, selection audit history and local analyst artifacts. Existing local backup tooling already includes every `.forme-data/*.sqlite` file via consistent SQLite snapshots, including both journals. Model-process scratch files are not part of that backup; frozen recipes/orders remain in the journal. Hosted journals need their own account/database backup arrangements.
 
-**Delete learning history** explicitly clears this owner's journal/selection and its recorded local model-run directories, returning to Current. Actual preferences/saves/hides and separate legacy studies remain. Previously downloaded exports, device outboxes and independent backups are separate copies; deleting the active journal does not erase them. Resolve pending feedback before deletion; other devices can still submit their own queued operations.
+**Delete learning history** explicitly clears this owner's journal/selection, local analyst artifacts and recorded local model-run directories, returning to Current. Minimal analysis billing reservations remain to preserve spending limits; an in-progress analysis blocks deletion. Actual preferences/saves/hides and separate legacy studies remain. Previously downloaded exports, device outboxes and independent backups are separate copies; deleting the active journal does not erase them. Resolve pending feedback before deletion; other devices can still submit their own queued operations.
 
 Relevant checks: `npm run typecheck`, `npm run test:unit`, `npm run test:recommendations`, `npm run build`, and `npm test -- tests/e2e/learning.spec.ts tests/e2e/listing-feedback.spec.ts`. Tests use isolated fixtures and no provider credits. Database access tests execute the actual migration with PGlite; that does not establish it is deployed to Supabase. See [project state](project-state.md) for dated verification and [original plan](recommendation-learning-plan.md) for rationale/deferred extensions.
