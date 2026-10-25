@@ -57,13 +57,13 @@ async function setup(request){const root=await mkdtemp(join(tmpdir(),'forme-bran
 const reply=(brands,credits='3')=>Response.json({brands},{headers:{'x-credits-used':credits}});
 
 test('planning and enqueueing send nothing; the run looks each brand up once, saves outcomes and records the exact charge',async()=>{
- const urls=[];const {root,control}=await setup(async input=>{urls.push(new URL(String(input)));const query=new URL(String(input)).searchParams.get('query');return reply(query==='Marni'?found([123,'Marni',900]):found([9,'Hario Kids']));});
+ const urls=[];const {root,control}=await setup(async input=>{urls.push(new URL(String(input)));const query=new URL(String(input)).searchParams.get('keyword');return reply(query==='Marni'?found([123,'Marni',900]):found([9,'Hario Kids']));});
  try{
   const plan=await control.plan({},{scope:'brands',limit:2});assert.equal(plan.maximumCredits,6);assert.equal(urls.length,0);
   await control.enqueue(plan.id,{});assert.equal(urls.length,0);assert.equal((await control.status()).reservedCredits,6);
   const done=await control.work();assert.equal(done.status,'complete');assert.deepEqual([done.looked,done.matched,done.none,done.ambiguous],[2,1,1,0]);
   assert.equal(urls.length,2);assert.ok(urls.every(url=>url.origin+url.pathname==='https://scrapebadger.com/v1/vinted/brands'&&url.searchParams.get('market')==='se'));
-  assert.deepEqual(urls.map(url=>url.searchParams.get('query')),['Marni','Hario']);
+  assert.deepEqual(urls.map(url=>url.searchParams.get('keyword')),['Marni','Hario']);assert.ok(urls.every(url=>!url.searchParams.has('query')),'the brands endpoint takes `keyword`');
   const status=await control.status();assert.equal(status.reportedCredits,6);assert.equal(status.runs[0].status,'complete');
   const saved=await readBrandIds(root);assert.deepEqual(saved.matched.map(row=>[row.name,row.id,row.title]),[['Marni','123','Marni']]);assert.deepEqual(saved.checked.map(row=>[row.name,row.status]),[['Hario','none']]);
   assert.match(saved.matched[0].source,/provider brand lookup/);
@@ -79,7 +79,7 @@ test('a daily cap that cannot cover the run stops it before any request',async()
  finally{control.close();await rm(root,{recursive:true,force:true});}
 });
 test('unexpected billing, an HTTP error or a malformed answer stops the run without retrying, keeping credits reserved and earlier brands saved',async()=>{
- for(const [label,second,error] of [['billing',()=>reply(found([5,'Hario']),'9'),/Unexpected provider billing/],['http',()=>new Response('no',{status:500,headers:{'x-credits-used':'0'}}),/HTTP 500/],['shape',()=>Response.json({brands:'x'},{headers:{'x-credits-used':'3'}}),/Unexpected brand response/]]){
+ for(const [label,second,error] of [['billing',()=>reply(found([5,'Hario']),'9'),/Unexpected provider billing/],['http',()=>new Response('{"detail":"boom"}',{status:500,headers:{'x-credits-used':'0'}}),/HTTP 500: \{"detail":"boom"\}/],['shape',()=>Response.json({brands:'x'},{headers:{'x-credits-used':'3'}}),/Unexpected brand response/]]){
   let calls=0;const {root,control}=await setup(async()=>{calls++;return calls===1?reply(found([123,'Marni'])):second();});
   try{
    const plan=await control.plan({},{scope:'brands',limit:3});await control.enqueue(plan.id,{});
