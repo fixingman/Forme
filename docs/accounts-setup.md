@@ -73,6 +73,8 @@ On Vercel (import the GitHub repo), set **only** `NEXT_PUBLIC_SUPABASE_URL`, `NE
 ### 8. Publish your listings
 `npm run publish` sends `public/data/vinted.json` (after validation) to Postgres. It refuses an empty snapshot or a sudden large shrink unless you add `--force`. Run it after each collection.
 
+**Publish from the app.** On this computer, Settings → Collection tools → *Hosted site* shows the listings on this computer next to what the hosted site holds, and *Publish to hosted site* runs the same publisher (free, no provider credits). It is available only on `127.0.0.1` to the owner, refuses while a collection run holds the lock, and cannot override the shrink guard; that stays a command-line `--force`. The panel does not appear on the hosted site, and its API (`/api/publish`) answers 401/403 there and without the owner key.
+
 ## Check the setup with one command
 
 `npm run auth:check` makes read-only requests with the **publishable** key only and tells you, in plain words, whether: the project is reachable, public sign-up is off, email (and Google) sign-in are enabled, the four tables and `save_profile` exist, and a signed-out visitor is refused on all of them. It prints no keys and changes nothing.

@@ -22,7 +22,7 @@ test('signed-out page requests are sent to /login, keeping the destination',asyn
  }
 });
 test('signed-out API requests get 401 and no data, including collection and profile endpoints',async()=>{
- for(const path of ['/api/profile','/api/listings','/api/refresh','/api/local-profile','/api/size-profile','/api/learning','/api/learning-analysis']){
+ for(const path of ['/api/profile','/api/listings','/api/refresh','/api/local-profile','/api/size-profile','/api/learning','/api/learning-analysis','/api/publish']){
   const response=await api.get(path);expect(response.status(),path).toBe(401);expect(await response.json()).toEqual({error:'Sign in required.'});
  }
  expect((await api.put('/api/profile',{data:{backup:{},expectedRevision:0}})).status()).toBe(401);

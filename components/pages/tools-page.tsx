@@ -7,6 +7,7 @@ import { Header } from "../ui/page-states";
 import type { ListingSnapshot } from "@/lib/load-listings";
 import { formatDateTime } from "@/lib/domain/presentation.mjs";
 import RefreshControls from "../refresh-controls";
+import PublishControls from "../publish-controls";
 import DataQuality from "../data-quality";
 import FeedbackReview from "../feedback-review";
 import LocalProfile from "../local-profile";
@@ -53,6 +54,7 @@ export default function ToolsPage({
       {mode === "live" && (
         <RefreshControls settings={data} savedListings={savedListings} refreshed={reloadListings} />
       )}
+      {mode === "live" && <PublishControls refreshed={reloadListings} />}
       <section className="panel">
         <h3>Learning and evaluation</h3>
         <p>Review feedback, compare learned candidates and control which ranker Discover uses.</p>

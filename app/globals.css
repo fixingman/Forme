@@ -3790,3 +3790,19 @@ a.hidden-piece-name:hover strong {
 .hidden-more {
   margin-top: var(--space-4);
 }
+.publish-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-4);
+}
+.publish-facts > div {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) 1fr;
+  gap: var(--space-3);
+}
+.publish-facts dt {
+  color: var(--muted);
+}
+.publish-facts dd {
+  margin: 0;
+}
