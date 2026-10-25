@@ -1,5 +1,7 @@
 # Phase 2: real listings and Vinted feasibility
 
+> Historical document (20–22 October 2026). Its status, setup assumptions and proposals may be superseded. Use [current project state](project-state.md), [decisions](decisions.md) and [accounts setup](accounts-setup.md) for current guidance. Past paid-run commands are not new spending authorization.
+
 Research date: 18 October 2026. Status: source selection; no live Vinted connection established.
 
 ## Product scope

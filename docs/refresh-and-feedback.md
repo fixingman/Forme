@@ -12,7 +12,7 @@ References: [Auralee](https://www.vinted.se/brand/2053426-auralee), [Lemaire](ht
 
 ## Explicit refresh flow
 
-From any page on this computer, press the refresh icon in the top bar (named **Find new pieces**). This stays on the current page and opens a small dialog that obtains a free cost preview. Discover and Following default to their own scope; other shopping feeds use Your edit. The default is up to three brand searches. **Search options** changes scope or batch size; no paid request occurs while changing options.
+From any page on this computer, press the refresh icon in the top bar (named **Find new pieces**). This stays on the current page and opens a small dialog that obtains a free cost preview. Discover and Following default to their own scope; other shopping feeds use Your edit. The default is up to three brand searches. **Search options** changes scope or batch size, including larger batches up to 120 brand searches / 600 quoted credits. The actual quote includes only eligible brands, so it can be smaller. Saved-item availability checks retain their separate one-to-three-item limit. No paid request occurs while changing options.
 
 The preview shows the brands, maximum credits and today's remaining local allowance. Only the separate **Find pieces · up to N credits** confirmation authorizes collection. Cancel, Escape and closing the dialog never start a run. A failed quote can be retried for free; a failed or expired run confirmation clears the quote and never automatically resubmits collection. Background collection may continue after the dialog closes.
 
@@ -34,7 +34,7 @@ Live **New to FORME** cards and Home arrivals share a rolling seven-day first-se
 
 ## Budget accounting
 
-The private `.forme-data/refresh.sqlite` stores plans, results, reservations and the daily cap. The default cap is 15 credits and can only be changed explicitly in Collection tools (5–100). A run is limited to three searches regardless of the daily cap. The UTC-day budget includes ordinary collection ledger reservations, completion reservations, the previous Discover pilot, and new UI refreshes. The command-line collectors also honor this configured cap once the controls have initialized it.
+The private `.forme-data/refresh.sqlite` stores plans, results, reservations and the daily cap. Fresh installations default to 15 credits. Collection tools → Budget and history allows an explicit cap of 5–600 credits, or turning **Limit daily spending** off and pressing **Save daily cap**. Off mode is stored as `cap=0` and reports `remainingCredits=null`, never a fabricated provider balance. It keeps all accounting and still requires a separate quoted run confirmation. Brand-search plans remain bounded to 120 searches / 600 credits; availability checks retain their separate limit. The default quote remains three searches. The UTC-day budget includes ordinary collection ledger reservations, completion reservations, the previous Discover pilot, and new UI refreshes. The command-line collectors also honor this configured cap once the controls have initialized it, including off mode. The ordinary collector uses its legacy 15-credit fallback only when no control database exists. Historical one-time pilot/completion allowances stay separate and are not reset or expanded by switching the daily cap off.
 
 Historical 21 October report: that day's pilot had used 15 reported/reserved credits, leaving zero under the code's default cap. This is not a current balance or configured-cap reading.
 
@@ -46,11 +46,15 @@ Settings → Collection tools → Recommendation feedback shows saved and hidden
 
 Explicit styles, including custom style rules, and saved pieces extend the editorial related-brand map. Saves boost matching brands/styles and bounded text hints about category, material, color and fit. Recently observed listings receive a small boost using their own timestamps. Ranking interleaves brands for variety and explains the evidence used. No click tracking, external model or provider request is involved.
 
-**Not for me** is available on cards throughout Home, Following, Discover, saved searches, Saved Items and the preview grids, plus item detail pages. It hides that piece across feeds, applies a small bounded brand penalty, and modestly reduces repeated shared traits only after multiple dismissals. Saved IDs and retained copies are preserved; an active dislike pauses the saved piece’s positive taste contribution until restored. The feedback notice offers Undo, and Settings → Hidden pieces offers later restoration.
+**Not for me** is available on cards throughout Home, Following, Discover, saved searches, Saved Items and the preview grids, plus item detail pages. It hides that piece across feeds, applies a small bounded brand penalty, and modestly reduces repeated shared traits only after multiple dismissals. Saved IDs and retained copies are preserved; an active dislike pauses the saved piece’s positive taste contribution until restored. The feedback notice offers Undo, dismisses after four seconds and shows a thin progress line without a numeric seconds counter. Hover or keyboard focus pauses its remaining time. Settings → Hidden pieces offers later restoration.
 
 The adjacent **…** brand control opens an explicit **Not interested in [brand]** action with its all-feed scope disclosed. It uses the existing excluded-brand preference and stops following the brand; it does not create fabricated item dislikes. Undo restores the previous brand state. Later changes remain available under Your brands → Excluded. Brand exclusions and piece feedback continue through existing settings backup/account fields.
 
 Up to 200 compact feedback summaries survive outside the current collection in optional `tasteFeedback` profile data. Only currently dismissed keys contribute; Undo/Restore immediately stops using a signal. Existing backups without this field still work, and new v1 exports/account profiles retain it. Inferred hints do not populate verified listing fields. Department, size, excluded brands, review and availability filters remain hard constraints. Counts are preference signals, not inferred clicks, impressions, conversion rates or proof that relevance has improved. Saved-item snapshots and known active listings provide context; unmatched IDs remain visible as outside the current collection. Browser persistence, JSON backup, and explicit local-profile checkpoints remain available.
+
+## Ranking preview
+
+Collection tools also links to the owner’s local [Ranking preview](ranking-preview.md), with Current / River / Gorse views and a fixed blind comparison. Its ratings, model snapshots and optional earlier-study imports stay separate from real saves and hidden pieces. Switching views reads frozen results; a new comparison is needed to train on new preview feedback. It never calls collection or translation.
 
 ## Local pilot boundary and verification
 

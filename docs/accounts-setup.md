@@ -1,13 +1,13 @@
 # Accounts and hosted data (private beta, owner only)
 
-Written 22 October 2026. The code for this is in the repository and tested, but **it has not been run against a real Supabase project** (none exists yet; creating one needs your account). The database rules were tested in a real Postgres engine; the sign-in flow was tested with stand-ins for Supabase. Expect to fix small dashboard-setting mismatches on first contact, and tell me what you see.
+Reviewed 24 October 2026. Supabase authentication, invited-owner access, profile sync and hosted listing reads are implemented. Dated live sign-in, profile-write and listing-publication evidence is recorded in [project state](project-state.md); hosted web deployment and real two-device sync remain unverified. This is a setup reference for a fresh environment: do not recreate the existing project, invitation or schema merely to check it.
 
 ## How it fits together
 
 | Piece | Job | Where it runs |
 |---|---|---|
-| Vercel | Hosts the web app (the part you open on phone and desktop) | Cloud |
-| Supabase Auth | Sign-in: emailed link or Google. No passwords | Cloud |
+| Vercel | Intended web host; deployment remains pending verification | Cloud |
+| Supabase Auth | Passwordless emailed link; Google remains disabled by owner choice | Cloud |
 | Supabase Postgres | Your preferences, saved items and the published listings | Cloud |
 | Collection, translation, publishing | Spends provider credits, writes listings | **Your computer only** |
 
@@ -48,7 +48,7 @@ By default a link must be opened in the same browser that asked for it. To open 
 <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Sign in</a></p>
 ```
 
-Supabase's built-in email sender has a very small hourly limit. That is fine for one person; add your own SMTP provider later if you hit it.
+The owner reported configuring Resend SMTP after unreliable built-in delivery. The shared test sender is a single-owner stopgap. Verify current delivery and redirect settings before a hosted release; dashboard setup is not proof that mail arrives.
 
 ### 6. Google (skipped for now, by choice)
 Not enabled, and the login page hides the Google button. If you change your mind: do the steps below, then set `FORME_GOOGLE_SIGNIN=1` where the app runs so the button appears.
@@ -86,7 +86,7 @@ This proves the dashboard and database settings. It cannot prove that an email a
 1. Open the Vercel address signed out: you land on the login page.
 2. Request a link, open it on your phone: you are in. Open the same address on your desktop, sign in too.
 3. Change a brand on your phone; bring the desktop tab to the foreground: it picks the change up. Settings → Account shows the sync state.
-4. From a Google account that is **not** on the list, press Continue with Google: you see "That account isn't on the invite list" and nothing else.
+4. Confirm a signed-out or uninvited session cannot read listings or account preferences. Google remains disabled; test that provider only if explicitly enabled later.
 5. Settings → Account → Sign out, then confirm a page refresh sends you to login.
 
 ## What happens to what you already have

@@ -14,6 +14,7 @@
 - Keep provider credentials and the Supabase service-role key server-side and on the owner's computer. Never copy credentials, cookies, tokens or private settings into docs, fixtures, logs or commits. Supabase's public URL/publishable key are a separate category; see [accounts setup](docs/accounts-setup.md).
 - Browsing, saving and changing filters must not trigger paid collection or translation. Preview cost before an authorized paid run. Do not increase caps, erase reservations or retry uncertain billable requests without authorization covering that action. A completed historical allowance is not permission for another run.
 - Preserve the data-trust rules in [decisions](docs/decisions.md#data-trust). Do not fill missing fields with unsupported claims.
+- Reuse the [design standard](docs/design-system.md), shared listing metadata/formatters and UI primitives. Run `npm run check:format:ui` for UI work; `npm run format:ui` applies the pinned formatter. Keep preference ownership in the persistent shell and paid-work guards on the server.
 - Use explicit `127.0.0.1` for local URLs and commands, including Codex routing; do not substitute `localhost`.
 - For Supabase work, discover and prefer the Supabase MCP tools when available. Codex reads `.codex/config.toml`; Claude Code reads `.mcp.json`. Follow [MCP setup](docs/accounts-setup.md#agent-mcp-connection) for OAuth and session refresh. A config entry alone is not proof of an authenticated connection or a successful tool call; report the actual boundary if tools are unavailable.
 

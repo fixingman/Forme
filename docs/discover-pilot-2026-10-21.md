@@ -1,5 +1,7 @@
 # Discover pilot — 21 October 2026
 
+> Historical document (20–22 October 2026). Its status, setup assumptions and proposals may be superseded. Use [current project state](project-state.md), [decisions](decisions.md) and [accounts setup](accounts-setup.md) for current guidance. Past paid-run commands are not new spending authorization.
+
 The user authorized one search each for Auralee, Lemaire and Studio Nicholson: up to 60 returned rows and 15 provider credits total. All three requests completed, at 5 reported credits each. No paid translation request was made.
 
 | Brand query | Returned | Passed listing validation and exact-brand matching |

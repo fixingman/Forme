@@ -1,6 +1,6 @@
 # Release basics
 
-Written 21 October 2026. Everything here is in the repository and tested locally. **Nothing has been provisioned**: there is no hosted staging, no monitoring service, no secrets manager and no deployment yet. Those need accounts and are listed under [still needs accounts](#still-needs-accounts-or-a-decision).
+Reviewed 24 October 2026. These are operational procedures, not evidence that a service is healthy or deployed today. Supabase has dated live verification; hosted web deployment, monitoring and offsite recovery remain pending. See [current state](project-state.md).
 
 ## Environments
 
@@ -8,15 +8,15 @@ Written 21 October 2026. Everything here is in the repository and tested locally
 |---|---|---|
 | Local | `npm run dev`, with `.env.local`, `.forme-data/` and `public/data/vinted.json` | Real, collected with your own provider key |
 | CI | GitHub Actions on every pull request and push to `main` | Fixtures only; no provider key, no network collection |
-| Staging / production | Not created | Needs hosted storage first (see below) |
+| Staging / production | No verified web deployment | Supabase reads/auth exist; deployment and phone validation remain |
 
-A Vercel preview of the current app would show the frontend only. The collection APIs are deliberately disabled on Vercel and the filesystem is read-only, so a preview is not a real staging environment for collection.
+A configured hosted build can use Supabase authentication, profiles and published listings. Collection APIs remain unavailable there: hosted browsing is not a staging collector.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs: secret scan, typecheck, unit tests, production build, Playwright (bundled Chromium). Rehearsed locally on 21 Oct 2026 for everything except the Playwright step, which needs a Chromium download matching Playwright 1.64 that was not installed on that machine. Dependabot proposes npm updates weekly and Actions updates monthly.
+`.github/workflows/ci.yml` runs: secret scan, UI format check, typecheck, unit tests, production build, Playwright (bundled Chromium). Rehearsed locally on 21 Oct 2026 for everything except the Playwright step, which needs a Chromium download matching Playwright 1.64 that was not installed on that machine. Dependabot proposes npm updates weekly and Actions updates monthly.
 
-Local equivalents: `npm run check:secrets`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm test`.
+Local equivalents: `npm run check:secrets`, `npm run check:format:ui`, `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm test`.
 
 ## Backups and restore
 
@@ -62,7 +62,7 @@ Rotation steps: create the new key at the provider, update `.env.local` (or the 
 
 ## Still needs accounts or a decision
 
-- **Hosted staging and production**, with a managed Postgres replacing local SQLite/JSON and real authentication, so preferences, saves and the budget ledger are shared across devices and processes. Until then the spending cap is per-machine, not account-wide.
+- **Hosted web deployment and real-device checks** of the implemented Supabase auth/profile/listing paths. The collection budget remains local and per-machine; it is not a shared account balance.
 - **A durable job runner** for hosted collection (the queue/lease/recovery logic here is storage-agnostic in design but implemented on SQLite).
 - **A secrets manager and an external monitor/error tracker** wired to `/api/health` and the JSON logs.
 - **Offsite backup storage.**

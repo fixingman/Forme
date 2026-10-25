@@ -1,5 +1,7 @@
 # Personal recommendation pilot
 
+> Historical document (20–22 October 2026). Its status, setup assumptions and proposals may be superseded. Use [current project state](project-state.md), [decisions](decisions.md) and [accounts setup](accounts-setup.md) for current guidance. Past paid-run commands are not new spending authorization.
+
 Implemented on 21 October 2026, without additional paid collection.
 
 1. **Categories and size groups.** Conservative title-based hints separate clothing, trousers, footwear, accessories, homeware, beauty and toys. Unknown remains unknown. These hints are not verified marketplace taxonomy. Clothing, waist and shoe selections are independent; legacy numeric labels are retained as unassigned until reviewed. The user's explicitly confirmed top sizes 48/50 belong to clothing. No international size conversions are assumed. Clothing filters do not remove homeware or accessories; one-size inclusion still applies to wearable accessories.

@@ -42,6 +42,8 @@ A read-only audit found no saved/dismissed owner feedback in the synced profile 
 
 The first owner review was completed and the held-out comparison ran. Its labels were too sparse and imbalanced to satisfy the training/evaluation gate: both learned adapters used the existing-rule fallback in every owner fold. Equal outputs therefore do not establish a trained-model tie. Personal labels and detailed results remain in ignored local artifacts. Small test pools below ten also make precision@10 unsuitable for choosing an engine. The next useful step is broader genuine feedback, including more positive examples, before another quality comparison.
 
+The subsequent broader owner review supplied enough training examples for both learned adapters to train in the combined run; Gorse training completion was confirmed and River used its learned path. A separate cross-batch diagnostic trained on followed-brand context and withheld all first-round Discover ratings. Neither learned engine improved the liked-piece position over the current rules in that small diagnostic. The original folds still fail the personal-quality screening gate because their held-out labels remain sparse and imbalanced. Filters and restoration checks passed in this run, without resolving the earlier intermittent Gorse order-restoration observation. The live ranker remains unchanged. Detailed personal ratings, ranks and metrics remain private.
+
 ## Reproduce without touching the live app
 
 ```sh
@@ -81,6 +83,28 @@ Judgments are bound to item content and source observation timestamps, not just 
 
 `results.json` records engine modes, versions, dataset hash, actual model-training confirmation, raw Gorse results, application-filtered rankings, restoration checks and metrics. Process logs and per-run databases remain private. Keep personal results out of public documentation and commits. Study labels are evaluation-only unless the owner separately asks to import them into FORME.
 
+A follow-up review may include eligible pieces from followed brands to broaden taste-training context. Keep each batch and its judgments separately fingerprinted, preserve earlier labels, and state this broader scope to the reviewer. Followed-brand items are excluded from Discover by policy, so they must not be counted as Discover held-out test candidates. They may supply training context for the original non-followed held-out items, with test feedback still removed. More training context alone does not enlarge the held-out catalog or establish a quality winner.
+
+To combine disjoint primary and followed-brand context reviews against their frozen source snapshot:
+
+```sh
+node scripts/lab/combine-recommendation-reviews.mjs \
+  --primary .context/recommendation-lab \
+  --context .context/recommendation-lab/round-2 \
+  --snapshot .context/recommendation-lab/round-2/source-snapshot.json \
+  --preferences .context/recommendation-lab/round-2/preferences.json \
+  --output .context/recommendation-lab/combined-round-2
+npm run recommendations:compare -- \
+  --dataset .context/recommendation-lab/combined-round-2/dataset.json \
+  --output .context/recommendation-lab/combined-round-2/results.json
+```
+
+The combiner rejects unknown/overlapping IDs, changed content/observation fingerprints, foreign votes and ineligible context. It adds a cross-batch diagnostic using only context labels for training and explicitly rated primary items for testing. It also retains the original three Discover folds with context labels as training-only examples. Do not treat neutral skips as negative labels, combine model scores from different folds into one ranking, or interpret identical precision@10 on a small pool as evidence of equal quality.
+
 ## Selection gate
 
 Keep the current app ranker until owner judgments show a useful improvement and restoration/filter guarantees pass. Compare the same catalog and feedback, inspect errors rather than relying on one aggregate metric, and preserve the existing ranking as a fallback. No integration, model-hosting arrangement or deployment has been approved by the benchmark alone.
+
+The subsequently approved [private ranking preview](ranking-preview.md) exposes these actual local models inside Collection tools. Preview feedback remains separate from account preferences; it does not change the evaluation’s lack of a production-quality winner.
+
+The proposed next step is the [reason-aware learning/evaluation plan](recommendation-learning-plan.md), which adds distinct reason semantics, durable evidence and forward validation. This plan is not yet implemented and does not replace the results or selection boundary above.

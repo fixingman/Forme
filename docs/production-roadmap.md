@@ -1,5 +1,7 @@
 # FORME: local pilot to private beta
 
+> Historical document (20–22 October 2026). Its status, setup assumptions and proposals may be superseded. Use [current project state](project-state.md), [decisions](decisions.md) and [accounts setup](accounts-setup.md) for current guidance. Past paid-run commands are not new spending authorization.
+
 Assessment: 21 October 2026. This is a proposed roadmap, not a claim that production deployment has happened. No hosting, accounts, services, paid collection, credential rotation or database migration was performed for this assessment.
 
 ## What has been proven

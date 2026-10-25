@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - name: No committed secrets
         run: npm run check:secrets
+      - run: npm run check:format:ui
       - run: npm run typecheck
       - run: npm run test:unit
       - run: npm run build
