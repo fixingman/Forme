@@ -35,16 +35,16 @@ Order, top to bottom: source (and a "New to FORME" marker, as on cards), brand, 
 | State | Label | Tone | Detail |
 |---|---|---|---|
 | Provider-checked available | Available when last checked | ok | Checked *date* |
-| Not checked, seen recently | Availability not confirmed | neutral | Last seen *date* |
+| Not checked, seen recently (the everyday default) | (not shown) | | |
 | Not checked, not seen for over 7 days | Availability not confirmed | warn | Last seen *date* · over 7 days ago |
 | Reserved | Reserved | warn | Reserved on Vinted · checked *date* |
 | Sold | Sold | closed | Marked sold on Vinted · checked *date* |
 | Removed or hidden | Removed or hidden | closed | No longer shown on Vinted · checked *date* |
 | Sample listing | (none) | | |
 
-  Only a provider check can produce Available, Reserved, Sold or Removed; without one the line says what is known (the last sighting) and nothing more. Sold and removed pieces stay saveable and openable so they can be confirmed.
+  The line appears only when it tells the reader something. Only a provider check can produce Available, Reserved, Sold or Removed; without one, the default "not confirmed, last seen *date*" is true of nearly every listing, so it is left out, and only a listing not seen for over a week gets the warning. `itemStatus` still reports every state; the page decides what is worth showing. Sold and removed pieces stay saveable and openable so they can be confirmed.
 - **Translation:** said once. Pending: "English title not available yet. Showing the original." Translated: a quiet "Translated · show original" disclosure (original title, original condition, a wording caveat). Already English: nothing. A condition that could not be translated is shown as the seller wrote it, on cards too.
-- **Price note:** "excl. delivery and fees" sits on the price line. Boilerplate availability and price disclaimers are not repeated as paragraphs.
+- **Price:** shown alone (with any price change, as on cards). There is no per-price note about delivery and fees; boilerplate availability and price disclaimers are not repeated as paragraphs.
 - **About this listing:** one line per fact with its evidence beside it (Department, Category, Style, and Mentions when present). Unknown stays "Not specified" / "Not classified". One footnote says marketplace labels are not authenticated and that category and style are FORME's inference.
 
 ## Feed continuity

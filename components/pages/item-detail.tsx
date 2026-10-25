@@ -93,10 +93,7 @@ export default function ItemDetail({
             </p>
           )}
           <div className="detail-price">
-            <ListingPrice
-              item={item}
-              note={item.source && <span className="price-note">excl. delivery and fees</span>}
-            />
+            <ListingPrice item={item} />
           </div>
           <StatusLine item={item} />
           <div className="detail-actions">
@@ -178,10 +175,13 @@ export default function ItemDetail({
   );
 }
 
-/** One status line under the price: what is known about availability, and when it was known. */
+/**
+ * One status line under the price, only when it tells the reader something: a provider-confirmed state, or a listing not seen
+ * for over a week. The everyday "availability not confirmed, last seen <date>" is the default for every listing, so it is not shown.
+ */
 function StatusLine({ item }: { item: Listing }) {
   const status = itemStatus(item);
-  if (!status) return null;
+  if (!status || status.tone === "neutral") return null;
   return (
     <p className="item-status" data-tone={status.tone} data-state={status.state}>
       <strong>{status.label}</strong>

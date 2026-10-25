@@ -12,7 +12,7 @@ test('bad prices and source links are excluded; item-specific stale data and unk
  await page.route('**/api/listings',route=>route.fulfill({json:{...fixture,fetchedAt:new Date().toISOString(),items:[{...first,fetchedAt:at,firstSeenAt:at},{...first,id:999991,price:null},{...first,id:999992,sourceUrl:'https://evil.example/item'}]}}));
  await page.goto('/following');const card=page.getByTestId(`listing-${first.id}`);await expect(card).toBeVisible();await expect(card).toContainText('Price last observed over 7 days ago');await expect(page.locator('.product')).toHaveCount(1);
  await card.getByRole('link',{name:`View ${first.brand} ${first.title}`,exact:true}).click();
- await expect(page.locator('.item-status')).toContainText('Availability not confirmed');await expect(page.locator('.item-status')).toContainText('over 7 days ago');await expect(page.locator('.detail-price')).toContainText('excl. delivery and fees');
+ await expect(page.locator('.item-status')).toContainText('Availability not confirmed');await expect(page.locator('.item-status')).toContainText('over 7 days ago');
  await page.goto('/tools');await page.locator('summary').filter({hasText:/^Data quality$/}).click();const report=page.locator('#data-quality');await expect(report).toBeVisible();await expect(report.locator('div').filter({has:page.locator('dt',{hasText:'Excluded or duplicate records'})}).locator('dd')).toHaveText('2');
 });
 test('reported sold pieces leave shopping feeds but remain saved with their status and backup provenance',async({page})=>{

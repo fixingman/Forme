@@ -52,8 +52,8 @@ test('size and condition are labelled facts; a missing size is omitted instead o
  await page.goto('/items/93004');await expect(page.locator('.detail .facts dt')).toHaveText(['Condition']);await expect(page.locator('.detail')).not.toContainText('Not provided');
  await page.goto('/items/93003');await expect(page.locator('.detail .facts dt')).toHaveText(['Size','Condition','Category']);await expect(page.locator('.detail .facts dd').nth(1)).toHaveText('Fint skick');await expect(page.locator('.detail')).not.toContainText('Condition not translated');await expect(page.locator('.detail .facts dd').nth(2)).toHaveText('Shirts');
 });
-test('the price has one quiet note beside it, and a price change shows exactly as on cards',async({page})=>{
- await page.goto('/items/93001');await expect(page.locator('.detail-price')).toContainText('excl. delivery and fees');await expect(page.locator('.previous-price')).toHaveCount(0);
+test('the price stands alone, and a price change shows exactly as on cards',async({page})=>{
+ await page.goto('/items/93001');await expect(page.locator('.detail-price')).toHaveText(/^1\s?200\skr$/);await expect(page.locator('.price-note')).toHaveCount(0);await expect(page.getByText('excl. delivery')).toHaveCount(0);await expect(page.locator('.previous-price')).toHaveCount(0);
  await page.goto('/items/93010');await expect(page.locator('.detail-price .previous-price')).toHaveText(/Previously 1\s?500\skr · down 300\skr/);
  await page.goto('/items/93011');await expect(page.locator('.detail-price .previous-price')).toHaveText(/Previously 900\skr · up 300\skr/);
  await page.goto('/following').catch(()=>0);
@@ -66,7 +66,6 @@ test('the old boilerplate paragraphs are gone: one footnote, nothing repeated',a
 
 // ------------------------------------------------------------------ status line
 const cases:[string,number,string,string,string,RegExp][]=[
- ['unknown, recently seen',93001,'unknown','neutral','Availability not confirmed',/^Last seen \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}$/],
  ['checked and available',93012,'available','ok','Available when last checked',/^Checked \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}$/],
  ['sold',93013,'sold','closed','Sold',/^Marked sold on Vinted · checked /],
  ['reserved',93014,'reserved','warn','Reserved',/^Reserved on Vinted · checked /],
@@ -81,12 +80,22 @@ test(`status line: ${name}`,async({page})=>{
  // state is carried by words, never by colour alone
  expect((await status(page).innerText()).length).toBeGreaterThan(10);
 });
+test('the everyday default says nothing: no availability line, no "last seen", for a listing we simply have not checked',async({page})=>{
+ await page.goto('/items/93001');
+ await expect(status(page)).toHaveCount(0);await expect(page.getByText('Availability not confirmed')).toHaveCount(0);await expect(page.getByText('Last seen')).toHaveCount(0);
+ await expect(page.locator('.detail-price')).toBeVisible();await expect(actions(page)).toBeVisible();   // price goes straight to the actions
+ const [price,row]=await Promise.all([page.locator('.detail-price').boundingBox(),actions(page).boundingBox()]);expect(row!.y-(price!.y+price!.height)).toBeLessThan(40);
+});
+test('a listing with no sighting time at all also says nothing',async({page})=>{
+ await page.route('**/api/listings',route=>route.fulfill({json:{fetchedAt:iso(now-3600e3),queries:['fixture'],items:items.map(i=>i.id===93001?{...i,observedAt:undefined}:i)}}));
+ await page.goto('/items/93001');await expect(page.locator('.detail h1')).toBeVisible();await expect(status(page)).toHaveCount(0);
+});
 test('the status line sits between the price and the actions, and a closed state is visually distinct',async({page})=>{
  await page.goto('/items/93013');
  const [price,line,row]=await Promise.all([page.locator('.detail-price').boundingBox(),status(page).boundingBox(),actions(page).boundingBox()]);
  expect(price!.y+price!.height).toBeLessThanOrEqual(line!.y+1);expect(line!.y+line!.height).toBeLessThanOrEqual(row!.y+1);
  const closedColour=await status(page).locator('strong').evaluate(e=>getComputedStyle(e).color);
- await page.goto('/items/93001');expect(await status(page).locator('strong').evaluate(e=>getComputedStyle(e).color)).not.toBe(closedColour);
+ await page.goto('/items/93012');expect(await status(page).locator('strong').evaluate(e=>getComputedStyle(e).color)).not.toBe(closedColour);   // available is not styled like sold
 });
 test('a sold or removed piece can still be saved, restored and opened on Vinted to confirm',async({page})=>{
  await page.goto('/items/93013');
@@ -162,10 +171,10 @@ test('unknown and unclassified values are stated honestly and absent rows are om
 });
 
 // ------------------------------------------------------------------ order, size and fit
-test('reading order is price, status, actions, brand, then About; Save is above the fold on a laptop',async({page})=>{
+test('reading order is price, actions, brand, then About; Save is above the fold on a laptop',async({page})=>{
  await page.setViewportSize({width:1280,height:720});await page.goto('/items/93001');
  const y=async(sel:string)=>(await page.locator(sel).first().boundingBox())!.y;
- const order=[await y('.detail-price'),await y('.item-status'),await y('.detail-actions'),await y('.brand-pref'),await y('.about')];
+ const order=[await y('.detail-price'),await y('.detail-actions'),await y('.brand-pref'),await y('.about')];
  expect(order).toEqual([...order].sort((a,b)=>a-b));
  const save=(await actions(page).getByRole('button',{name:'Save item',exact:true}).boundingBox())!;expect(save.y+save.height).toBeLessThanOrEqual(720);
 });
@@ -176,10 +185,10 @@ test('the details column is shorter than before: well under 700px for a typical 
 for(const [name,size] of [['phone',{width:375,height:760}],['small phone',{width:340,height:700}],['narrowest phone',{width:320,height:640}],['desktop',{width:1280,height:800}]] as const)
 test(`every state fits without overflow on ${name}, with comfortable touch targets`,async({page})=>{
  await page.setViewportSize(size);
- for(const id of [93001,93013,93016,93010]){
+ for(const id of [93001,93013,93016,93010]){   // typical, sold, long-unseen and price-drop listings
   await page.goto(`/items/${id}`);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`id ${id}`).toBe(true);
-  for(const loc of [page.locator('.facts'),status(page),actions(page),page.locator('.brand-pref'),about(page)]){const box=(await loc.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(size.width+0.5);}
+  for(const loc of [page.locator('.facts'),...(await status(page).count()?[status(page)]:[]),actions(page),page.locator('.brand-pref'),about(page)]){const box=(await loc.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(size.width+0.5);}
   for(const control of [actions(page).getByRole('button',{name:'Save item',exact:true}),actions(page).getByRole('link',{name:/View on Vinted/}),actions(page).getByRole('button',{name:/^Not for me:/})])expect((await control.boundingBox())!.height,`id ${id}`).toBeGreaterThanOrEqual(36);
   for(const control of [actions(page).getByRole('button',{name:'Save item',exact:true}),actions(page).getByRole('link',{name:/View on Vinted/})])expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
  }

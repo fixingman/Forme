@@ -1,14 +1,11 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import type { Listing } from "@/lib/catalog";
 import { formatPrice, listingCondition, listingSize } from "@/lib/domain/presentation.mjs";
 
-/** `note` sits on the price line itself (e.g. "excl. delivery and fees"), before any previous-price line. */
-export function ListingPrice({ item, note }: { item: Listing; note?: ReactNode }) {
+export function ListingPrice({ item }: { item: Listing }) {
   return (
     <div className="price">
       {formatPrice(item.price, item.currency)}
-      {note}
       {Number.isFinite(item.previousPrice) && item.previousPrice !== item.price && (
         <span className="previous-price">
           Previously {formatPrice(item.previousPrice!, item.currency)} ·{" "}
