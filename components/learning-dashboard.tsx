@@ -9,6 +9,7 @@ import { learningRequest, useLearningOutbox, type DislikeReason } from "@/lib/us
 import Dialog from "./ui/dialog";
 import { Header, Empty } from "./ui/page-states";
 import DislikeReasonDialog from "./dislike-reason";
+import LearningAnalyst from "./learning-analyst";
 import ListingMetadata from "./listings/listing-metadata";
 import ProductPhoto from "./product-photo";
 import { formatDateTime } from "@/lib/domain/presentation.mjs";
@@ -137,7 +138,16 @@ export default function LearningDashboard({
       !outbox.enqueue({
         id: exposureId,
         action: "exposure",
-        exposure: { id: exposureId, runId: comparison.id, keys: [key], channel: "preview" },
+        exposure: {
+          id: exposureId,
+          runId: comparison.id,
+          keys: [key],
+          channel: "preview",
+          surface: "/tools/learning",
+          trigger: "decision",
+          engine,
+          positions: { [key]: (comparison.engines[engine]?.keys.indexOf(key) ?? -1) + 1 },
+        },
       })
     )
       return;
@@ -289,6 +299,7 @@ export default function LearningDashboard({
             </h3>
             <p className="small">
               {report.counts.positive} positive · {report.counts.style} style dislikes ·{" "}
+              {report.counts.material} material · {report.counts.color} colour ·{" "}
               {report.counts.price} price · {report.counts.data} data reports ·{" "}
               {report.counts.unknown} unknown motives · {report.counts.unscored} without prior
               predictions
@@ -317,6 +328,19 @@ export default function LearningDashboard({
                         <th>{names[name]}</th>
                         <td>
                           {metric.status.replaceAll("-", " ")} · {metric.days} days
+                          {metric.pairs > 0 && (
+                            <p className="small">
+                              Gain vs Current:{" "}
+                              {Number.isFinite(metric.meanDailyGain)
+                                ? `${(metric.meanDailyGain * 100).toFixed(1)} points`
+                                : "—"}
+                              . Lower bound:{" "}
+                              {metric.lowerGain != null
+                                ? `${(metric.lowerGain * 100).toFixed(1)} points`
+                                : "needs more days"}
+                              .
+                            </p>
+                          )}
                         </td>
                         <td>{metric.pairs}</td>
                         <td>
@@ -395,6 +419,7 @@ export default function LearningDashboard({
           Delete learning history
         </button>
       </section>
+      <LearningAnalyst pendingFeedback={outbox.pending} />
       <section className="panel">
         <h2>Give fresh feedback</h2>
         <p>

@@ -14,7 +14,7 @@ export const FeedContext = createContext<{
   toggleSave: (id: number) => void;
   addSuggestion: (name: string) => void;
   dismiss: (item: Listing) => void;
-  recordVisible?: (item: Listing) => void;
+  recordVisible?: (item: Listing, position?: number) => void;
   restore: (key: string) => void;
   brandPreferences: (brand: string) => void;
 } | null>(null);

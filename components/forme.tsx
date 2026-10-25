@@ -297,6 +297,7 @@ export default function Forme() {
         {
           ...feedbackSnapshot(item),
           reason: "unspecified" as const,
+          hiddenAt: new Date().toISOString(),
           ...(eventId ? { feedbackEventId: eventId } : {}),
         },
       ].slice(-200),
@@ -365,6 +366,7 @@ export default function Forme() {
     identity:
       mode === "live" ? (sync.account?.email ?? (sync.state === "off" ? "local" : null)) : null,
     discover: pathname === "/discover",
+    enabled: mode === "live",
   });
   const recommendations = useMemo(
     () =>
@@ -382,14 +384,25 @@ export default function Forme() {
       : item
         ? learning.record(key, "dismiss", item, reason)
         : undefined;
-    setData((value) => ({
-      ...value,
-      tasteFeedback: (value.tasteFeedback ?? []).map((row) =>
-        row.key === key
-          ? { ...row, reason, ...(!eventId && fresh ? { feedbackEventId: fresh } : {}) }
-          : row,
-      ),
-    }));
+    setData((value) => {
+      const rows = value.tasteFeedback ?? [];
+      if (rows.some((row) => row.key === key))
+        return {
+          ...value,
+          tasteFeedback: rows.map((row) =>
+            row.key === key
+              ? { ...row, reason, ...(!eventId && fresh ? { feedbackEventId: fresh } : {}) }
+              : row,
+          ),
+        };
+      // A piece hidden before its details were remembered has no row yet: create one so the reason is not lost.
+      const created = {
+        ...(item ? feedbackSnapshot(item) : { key, brand: "", traits: [], style: "" }),
+        reason,
+        ...(fresh ? { feedbackEventId: fresh } : {}),
+      };
+      return { ...value, tasteFeedback: [...rows, created].slice(-200) };
+    });
     setReasonKey(null);
     setToast("Reason saved. You can change it in Hidden pieces.");
   }
@@ -398,10 +411,15 @@ export default function Forme() {
       new Map(
         recommendations.map((entry) => [
           listingKey(entry.item),
-          { reason: entry.reason, details: entry.details },
+          learning.selectedName === "current"
+            ? { reason: entry.reason, details: entry.details }
+            : {
+                reason: "Within your preferences · learned ordering",
+                details: ["Current preference context: " + entry.reason, ...entry.details],
+              },
         ]),
       ),
-    [recommendations],
+    [recommendations, learning.selectedName],
   );
   const genderHidden = source.filter((item) => !matchesGender(item, data.gender)).length;
   const list = visibleListings(data, source).filter(canBrowse),
@@ -924,6 +942,17 @@ export default function Forme() {
           <div className="notice" role="alert">
             {storageError}
           </div>
+        )}
+        {mode === "live" && (learning.pending > 0 || learning.error) && (
+          <p className="small notice" role="status">
+            {learning.pending > 0
+              ? `Feedback kept on this device · ${learning.pending} pending.`
+              : "Learning sync is unavailable."}
+            {learning.error
+              ? " Learning sync will retry when connected."
+              : " Waiting for learning sync."}{" "}
+            <Link href="/tools/learning">Learning details</Link>
+          </p>
         )}
         {mode === "demo" && (
           <div className="demo-indicator" role="status">

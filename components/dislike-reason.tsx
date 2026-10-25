@@ -27,7 +27,8 @@ export default function DislikeReasonDialog({
         ))}
       </div>
       <p className="small">
-        Style feedback refines taste. Price and listing issues are kept separate. You can change
+        Style feedback refines your taste. Material and colour are remembered as specific dislikes,
+        not as a verdict on the brand. Price and listing issues are kept separate. You can change
         this later in Hidden pieces.
       </p>
       <button className="textbutton" onClick={close}>

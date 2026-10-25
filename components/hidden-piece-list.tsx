@@ -3,7 +3,13 @@ import Link from "next/link";
 import { useId, useState } from "react";
 import { Search, X } from "lucide-react";
 import { images } from "@/lib/catalog";
-import { searchHidden } from "@/lib/domain/hidden-pieces.mjs";
+import {
+  PAGE_SIZE,
+  filterByReason,
+  reasonCounts,
+  searchHidden,
+} from "@/lib/domain/hidden-pieces.mjs";
+import { REASON_LABELS } from "@/lib/domain/dislike-reasons.mjs";
 import ProductPhoto from "./product-photo";
 
 export type HiddenEntry = {
@@ -16,6 +22,7 @@ export type HiddenEntry = {
   image?: string;
   sourceUrl?: string;
   label?: string;
+  reason?: string;
 };
 /** Search appears once the list is long enough that scanning stops being quicker than typing. */
 export const SEARCH_FROM = 6;
@@ -38,8 +45,19 @@ export default function HiddenPieceList({
   editReason?: (key: string) => void;
 }) {
   const [query, setQuery] = useState(""),
+    [filter, setFilter] = useState("all"),
+    [limit, setLimit] = useState(PAGE_SIZE),
     searchId = useId();
-  const shown = searchHidden(entries, query) as HiddenEntry[];
+  const reasons = reasonCounts(entries),
+    // A filter whose last piece was restored or re-reasoned no longer exists: fall back to everything.
+    active = reasons.some((option) => option.value === filter) ? filter : "all",
+    narrowed = !!query.trim() || active !== "all",
+    matches = searchHidden(filterByReason(entries, active), query) as HiddenEntry[],
+    shown = matches.slice(0, limit);
+  const search = (value: string) => {
+    setQuery(value);
+    setLimit(PAGE_SIZE);
+  };
   return (
     <>
       {entries.length >= SEARCH_FROM && (
@@ -54,25 +72,45 @@ export default function HiddenPieceList({
             value={query}
             placeholder="Search by brand or title"
             autoComplete="off"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => search(event.target.value)}
           />
           {query && (
             <button
               type="button"
               className="icon-button hidden-search-clear"
               aria-label="Clear search"
-              onClick={() => setQuery("")}
+              onClick={() => search("")}
             >
               <X aria-hidden="true" />
             </button>
           )}
         </div>
       )}
-      {query.trim() && (
+      {entries.length >= SEARCH_FROM && reasons.length > 1 && (
+        <div className="hidden-filter" role="group" aria-label="Filter by reason">
+          {[{ value: "all", label: "All", count: entries.length }, ...reasons].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="chip"
+              aria-pressed={active === option.value}
+              onClick={() => {
+                setFilter(option.value);
+                setLimit(PAGE_SIZE);
+              }}
+            >
+              {option.label} <span className="hidden-filter-count">{option.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {narrowed && (
         <p className="small hidden-search-status" role="status">
-          {shown.length
-            ? `Showing ${shown.length} of ${entries.length}`
-            : `No hidden pieces match “${query.trim()}”.`}
+          {matches.length
+            ? `Showing ${matches.length} of ${entries.length}`
+            : query.trim()
+              ? `No hidden pieces match “${query.trim()}”.`
+              : "No hidden pieces with this reason."}
         </p>
       )}
       <ul className="hidden-piece-list">
@@ -91,6 +129,11 @@ export default function HiddenPieceList({
                 <span className="hidden-piece-name">
                   <strong>{entry.brand || entry.label}</strong>
                   {entry.title && <span>{entry.title}</span>}
+                </span>
+              )}
+              {entry.reason && (
+                <span className="hidden-piece-reason">
+                  {REASON_LABELS[entry.reason as keyof typeof REASON_LABELS]}
                 </span>
               )}
               {entry.status === "remembered" && (
@@ -131,6 +174,16 @@ export default function HiddenPieceList({
           </li>
         ))}
       </ul>
+      {matches.length > shown.length && (
+        <button
+          type="button"
+          className="btn light hidden-more"
+          onClick={() => setLimit((value) => value + PAGE_SIZE)}
+        >
+          Show {Math.min(PAGE_SIZE, matches.length - shown.length)} more
+          <span className="hidden-filter-count">{matches.length - shown.length} left</span>
+        </button>
+      )}
     </>
   );
 }

@@ -2887,7 +2887,7 @@ details > p {
     align-self: flex-start;
   }
 }
-/* Undo toast: the dark toast surface with a message, a quiet Undo, a small seconds count and a close button.
+/* Undo toast: the dark toast surface with a message, a quiet Undo and a close button.
    A hairline bar drains along the bottom edge over the toast's lifetime and freezes while the countdown is paused. */
 .toast-action {
   position: relative;
@@ -3457,10 +3457,12 @@ a.hidden-piece-name:hover strong {
 }
 .toast-action:has(.toast-reason) {
   flex-wrap: wrap;
-  max-width: 540px;
+  width: min(480px, calc(100vw - 32px));
 }
-.toast-action:has(.toast-reason) .toast-message {
-  flex-basis: 100%;
+@media (max-width: 600px) {
+  .toast-action:has(.toast-reason) .toast-message {
+    flex-basis: 100%;
+  }
 }
 .learning-dashboard > .panel {
   margin: var(--space-6) 0;
@@ -3470,4 +3472,85 @@ a.hidden-piece-name:hover strong {
 }
 .learning-dashboard .preview-tabs {
   margin: var(--space-5) 0;
+}
+.analyst-panel > summary {
+  cursor: pointer;
+  min-height: var(--control-height, 44px);
+  padding: var(--space-2) 0;
+}
+.analyst-panel > summary span {
+  margin-left: var(--space-2);
+}
+.analyst-controls {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: end;
+  margin: var(--space-5) 0;
+}
+.analyst-controls label,
+.analyst-import-label {
+  display: grid;
+  gap: var(--space-2);
+}
+.analyst-controls select {
+  min-height: 44px;
+  max-width: 100%;
+}
+.analyst-packet,
+.analyst-report {
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+}
+.analyst-finding,
+.analyst-proposal {
+  margin: var(--space-4) 0;
+}
+.analyst-evidence {
+  margin: var(--space-3) 0;
+}
+.analyst-evidence summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.analyst-evidence pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-3);
+  background: var(--soft);
+  font-size: 12px;
+}
+.analyst-import-label textarea {
+  width: 100%;
+  min-width: 0;
+  font: 13px/1.5 monospace;
+  margin-bottom: var(--space-4);
+}
+.analyst-cycle {
+  color: var(--muted);
+}
+.hidden-piece-reason {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--accent);
+}
+.hidden-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-1);
+}
+.hidden-filter-count {
+  margin-left: 4px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.hidden-more {
+  margin-top: var(--space-4);
 }

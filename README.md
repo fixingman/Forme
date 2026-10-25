@@ -30,7 +30,8 @@ Supabase configuration enables account sync. Enforced local sign-in uses `FORME_
 - Saves retain listing copies; **Not for me** hides a piece and offers Undo. Brand exclusion is a separate explicit action.
 - Feeds reveal more existing pieces as you scroll. Browsing, saving and filtering make no paid collection or translation requests.
 - Manual refresh opens a free cost quote before a separate explicit paid-run confirmation. Caps, reservations and checkpoints remain in force, including when the daily limit is explicitly off.
-- The private local [ranking preview](docs/ranking-preview.md) compares Current, River and Gorse. Preview ratings stay separate from account saves; normal feeds retain the existing ranker.
+- The [learning loop](docs/learning-loop.md) adds optional feedback reasons, durable history, frozen evaluation and owner-approved River/Gorse version selection. Hosted migration application remains pending.
+- The private local [ranking preview](docs/ranking-preview.md) compares Current, River and Gorse. Preview ratings stay separate from account saves; Current remains the default ranker.
 
 ## Code layout
 

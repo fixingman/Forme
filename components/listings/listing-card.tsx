@@ -20,7 +20,11 @@ export default function Card({ item }: { item: Listing }) {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.5)) {
-          recordVisible(item);
+          const siblings = Array.from(element.current?.parentElement?.children ?? []).filter(
+            (node) => node.matches("article.product"),
+          );
+          const position = siblings.indexOf(element.current!) + 1;
+          recordVisible(item, position > 0 ? position : undefined);
           observer.disconnect();
         }
       },

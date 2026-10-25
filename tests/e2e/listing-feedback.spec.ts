@@ -144,7 +144,7 @@ test.describe('Undo toast',()=>{
   await page.goto('/items/92001');await hide(page);
   const [t,b]=await Promise.all([toast(page).boundingBox(),toast(page).locator('.toast-bar').boundingBox()]);
   expect(b!.x).toBeGreaterThanOrEqual(t!.x-0.5);expect(b!.x+b!.width).toBeLessThanOrEqual(t!.x+t!.width+0.5);expect(b!.y+b!.height).toBeLessThanOrEqual(t!.y+t!.height+0.5);expect(b!.y).toBeGreaterThan(t!.y+t!.height-4);
-  expect(t!.height).toBeLessThanOrEqual(90);   // a piece toast wraps to two rows to make room for Add reason
+  expect(t!.height).toBeLessThanOrEqual(60);
  });
  test('hovering freezes both the countdown and the bar, and leaving resumes from where it stopped',async({page})=>{
   await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
@@ -212,6 +212,6 @@ test.describe('Undo toast',()=>{
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(size.width);
   if(nav)expect(box.y+box.height).toBeLessThanOrEqual(nav.y+1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  expect((await toast(page).getByRole('button',{name:'Undo Not for me',exact:true}).boundingBox())!.height).toBeGreaterThanOrEqual(43.5);   // 44px target; allow sub-pixel rounding
+  expect((await toast(page).getByRole('button',{name:'Undo Not for me',exact:true}).boundingBox())!.height).toBeGreaterThanOrEqual(44);
  });
 });

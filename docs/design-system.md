@@ -11,7 +11,7 @@ Approved consolidation implemented 24 October 2026. Preserve the warm neutral su
 | `.btn` | Primary commitment; cost-labelled when it starts paid work |
 | `.btn.light` | Secondary or cancel action |
 | `.textbutton`, `.textlink` | Quiet action or navigation |
-| `.chip` | Filter, view selection or compact top-bar control; selected state uses `aria-pressed` or `aria-current` |
+| `.chip` | Filter, view selection or compact top-bar control (Hidden pieces uses it for its reason filter, with counts); selected state uses `aria-pressed` or `aria-current` |
 | `.icon-button` | Named compact action with an accessible label and 44px target |
 | `Dialog` | Native modal, unique title ID, Escape/backdrop close, body scroll lock and focus return |
 

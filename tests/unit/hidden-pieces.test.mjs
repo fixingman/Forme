@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {hiddenEntries,searchHidden} from '../../lib/domain/hidden-pieces.mjs';
+import {hiddenEntries,searchHidden,reasonCounts,filterByReason,NO_REASON,PAGE_SIZE} from '../../lib/domain/hidden-pieces.mjs';
+import {isHiddenAt} from '../../lib/domain/hidden-at.mjs';
+import {normalizeTasteFeedback} from '../../lib/domain/taste-profile.mjs';
 const piece=(id,brand,title,extra={})=>({id,source:'vinted',sourceId:String(id),sourceKey:`vinted:${id}`,sourceUrl:`https://www.vinted.se/items/${id}-x`,imageUrl:`https://images1.vinted.net/${id}.webp`,brand,title,...extra});
 
 test('rows are newest first, and a piece still in the collection shows its live details',()=>{
@@ -39,4 +41,24 @@ test('search matches every typed word in brand, title or listing number, ignorin
  assert.deepEqual(find('garcons'),['vinted:2'],'accents are ignored');assert.deepEqual(find('garçons'),['vinted:2']);assert.deepEqual(find('silk'),['vinted:3']);
  assert.deepEqual(find('nothing like this'),[]);assert.deepEqual(find('vinted:2'),['vinted:2'],'the listing number is searchable too');
  const bare=hiddenEntries({keys:['vinted:998877']});assert.equal(searchHidden(bare,'998877').length,1);assert.equal(searchHidden(bare,'listing').length,1);
+});
+
+const withReasons=[{key:'a',reason:'color'},{key:'b',reason:'material'},{key:'c'},{key:'d',reason:'color'},{key:'e',reason:'unspecified'},{key:'f',reason:'invented'}];
+test('reason counts list only reasons that occur, in the order offered, with plain hides and "No reason" together last',()=>{
+ assert.deepEqual(reasonCounts(withReasons).map(r=>[r.value,r.label,r.count]),[['material','Not the right material',1],['color','Not the right colour',2],[NO_REASON,'No reason',3]]);
+ assert.deepEqual(reasonCounts([]),[]);
+ assert.deepEqual(reasonCounts([{key:'x',reason:'price'}]).map(r=>r.value),['price']);
+});
+test('filtering by reason keeps order, treats unknown or unspecified as no reason, and "all" changes nothing',()=>{
+ assert.deepEqual(filterByReason(withReasons,'color').map(r=>r.key),['a','d']);
+ assert.deepEqual(filterByReason(withReasons,NO_REASON).map(r=>r.key),['c','e','f']);
+ assert.equal(filterByReason(withReasons,'all'),withReasons);
+ assert.deepEqual(filterByReason(withReasons,'price'),[]);
+});
+test('a page of hidden pieces is twenty',()=>assert.equal(PAGE_SIZE,20));
+test('hidden dates are ISO instants only, and a stored row keeps a valid one but drops anything else',()=>{
+ for(const good of ['2026-10-25T13:55:00.000Z','2026-10-25T13:55:00Z'])assert.equal(isHiddenAt(good),true,good);
+ for(const bad of ['2026-10-25','yesterday','2026-13-45T99:00:00Z','2026-10-25T13:55:00+02:00',20261025,null,undefined,{}])assert.equal(isHiddenAt(bad),false,String(bad));
+ const rows=normalizeTasteFeedback([{key:'vinted:1',brand:'A',traits:[],style:'',hiddenAt:'2026-10-25T13:55:00.000Z'},{key:'vinted:2',brand:'B',traits:[],style:'',hiddenAt:'last week'},{key:'vinted:3',brand:'C',traits:[],style:''}]);
+ assert.equal(rows[0].hiddenAt,'2026-10-25T13:55:00.000Z');assert.equal('hiddenAt' in rows[1],false);assert.equal('hiddenAt' in rows[2],false);
 });

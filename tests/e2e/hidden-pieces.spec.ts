@@ -19,7 +19,7 @@ const settings={...defaults,following:[],excluded:[],styles:[],styleRules:{},sav
 test.beforeEach(async({page})=>{
  await page.addInitScript(value=>{localStorage.setItem('forme-onboarding-complete','1');if(!localStorage.getItem('forme-v2'))localStorage.setItem('forme-v2',JSON.stringify(value));},settings);
  await page.route('**/api/listings',route=>route.fulfill({json:{fetchedAt:at,queries:['fixture'],items:inCollection}}));
- for(const path of ['size-profile','local-profile','profile','refresh'])await page.route(`**/api/${path}`,route=>route.fulfill({status:503,json:{error:'Isolated test'}}));
+ for(const path of ['size-profile','local-profile','profile','refresh','learning'])await page.route(`**/api/${path}`,route=>route.fulfill({status:503,json:{error:'Isolated test'}}));
  // live and remembered photos load; the third piece's photo is gone, as on Vinted after a re-upload
  await page.route('https://images1.vinted.net/**',route=>/live-95001|gone-96001/.test(route.request().url())?route.fulfill({status:200,contentType:'image/png',body:PNG}):route.fulfill({status:404,body:''}));
 });
@@ -76,9 +76,9 @@ test('no search for a short list; it appears for a long one and finds by brand, 
  await page.getByRole('button',{name:'Clear search',exact:true}).click();await expect(rows(page)).toHaveCount(12);await expect(search).toHaveValue('');await expect(page.locator('.hidden-search-status')).toHaveCount(0);
 });
 test('searching then restoring keeps the filter and updates the count',async({page})=>{
- await page.goto('/settings');
- await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);const keys=Array.from({length:6},(_,i)=>`vinted:98${i}00`);s.dismissed=[...s.dismissed,...keys];s.tasteFeedback=[...s.tasteFeedback,...keys.map(key=>({key,brand:'Lemaire',traits:[],style:'',title:'Denim shirt'}))];localStorage.setItem('forme-v2',JSON.stringify(s));});
- await page.reload();const search=page.getByRole('searchbox',{name:'Search hidden pieces'});await search.fill('denim');await expect(rows(page)).toHaveCount(6);
+ // Seed before hydration instead of racing the persistent shell's initial localStorage write.
+ await page.addInitScript(s=>{if(sessionStorage.getItem('hidden-search-seeded'))return;sessionStorage.setItem('hidden-search-seeded','1');const keys=Array.from({length:6},(_,i)=>`vinted:98${i}00`);localStorage.setItem('forme-v2',JSON.stringify({...s,dismissed:[...s.dismissed,...keys],tasteFeedback:[...s.tasteFeedback,...keys.map(key=>({key,brand:'Lemaire',traits:[],style:'',title:'Denim shirt'}))]}));},settings);
+ await page.goto('/settings');const search=page.getByRole('searchbox',{name:'Search hidden pieces'});await search.fill('denim');await expect(rows(page)).toHaveCount(6);
  await rows(page).first().getByRole('button',{name:'Restore Denim shirt',exact:true}).click();
  await expect(rows(page)).toHaveCount(5);await expect(search).toHaveValue('denim');await expect(page.locator('.hidden-search-status')).toHaveText('Showing 5 of 9');
 });
@@ -136,4 +136,166 @@ test(`hidden pieces fit without overflow on ${name}, with 44px restore targets`,
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  for(const button of await page.locator('#hidden-pieces').getByRole('button',{name:/^Restore/}).all()){const b=(await button.boundingBox())!;expect(b.height).toBeGreaterThanOrEqual(44);expect(b.x+b.width).toBeLessThanOrEqual(size.width);}
  for(const r of await rows(page).all()){const b=(await r.boundingBox())!;expect(b.x).toBeGreaterThanOrEqual(0);expect(b.x+b.width).toBeLessThanOrEqual(size.width+0.5);}
+});
+
+// ------------------------------------------------------------------ reasons
+const reasonOf=(page:Page,key:string)=>page.evaluate(k=>JSON.parse(localStorage.getItem('forme-v2')!).tasteFeedback.find((row:{key:string})=>row.key===k)?.reason,key);
+const dialog=(page:Page)=>page.getByRole('dialog',{name:'Why wasn’t this for you?'});
+const labels=['Not my style','Not the right material','Not the right colour','Too expensive','Incorrect size/category','No reason'];
+test('the reason dialog offers material and colour, in a sensible order, with the current choice marked',async({page})=>{
+ await page.goto('/settings');
+ await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();
+ await expect(dialog(page)).toBeVisible();
+ expect(await dialog(page).locator('.reason-options button').allInnerTexts()).toEqual(labels);
+ await expect(dialog(page).getByRole('button',{name:'No reason',exact:true})).toHaveAttribute('aria-pressed','true');   // nothing chosen yet
+ await expect(dialog(page)).toContainText('Material and colour are remembered as specific dislikes, not as a verdict on the brand.');
+ await dialog(page).getByRole('button',{name:'Not now',exact:true}).click();await expect(dialog(page)).toHaveCount(0);expect(await reasonOf(page,'vinted:96001')).toBeUndefined();
+});
+test('choosing a colour reason shows it on the row, survives a reload, and can be found by search',async({page})=>{
+ await page.goto('/settings');const gone=row(page,'Comme des Garçons');
+ await expect(gone.locator('.hidden-piece-reason')).toHaveCount(0);
+ await gone.getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await dialog(page).getByRole('button',{name:'Not the right colour',exact:true}).click();
+ await expect(dialog(page)).toHaveCount(0);await expect(page.getByText('Reason saved.',{exact:false})).toBeVisible();
+ await expect(gone.locator('.hidden-piece-reason')).toHaveText('Not the right colour');expect(await reasonOf(page,'vinted:96001')).toBe('color');
+ await page.reload();await expect(row(page,'Comme des Garçons').locator('.hidden-piece-reason')).toHaveText('Not the right colour');
+ // reopening marks the saved choice, and changing it replaces it rather than adding another
+ await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();
+ await expect(dialog(page).getByRole('button',{name:'Not the right colour',exact:true})).toHaveAttribute('aria-pressed','true');await expect(dialog(page).getByRole('button',{name:'Not the right material',exact:true})).toHaveAttribute('aria-pressed','false');
+ await dialog(page).getByRole('button',{name:'Not the right material',exact:true}).click();
+ await expect(row(page,'Comme des Garçons').locator('.hidden-piece-reason')).toHaveText('Not the right material');expect(await reasonOf(page,'vinted:96001')).toBe('material');
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('forme-v2')!).tasteFeedback.filter((row:{key:string})=>row.key==='vinted:96001').length)).toBe(1);
+ await expect(rows(page)).toHaveCount(4);
+});
+test('"No reason" and a plain hide show no reason line, so the list stays quiet',async({page})=>{
+ await page.goto('/settings');await expect(page.locator('#hidden-pieces .hidden-piece-reason')).toHaveCount(0);
+ const gone=row(page,'Comme des Garçons');
+ await gone.getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await dialog(page).getByRole('button',{name:'Too expensive',exact:true}).click();
+ await expect(gone.locator('.hidden-piece-reason')).toHaveText('Too expensive');
+ await gone.getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await dialog(page).getByRole('button',{name:'No reason',exact:true}).click();
+ await expect(gone.locator('.hidden-piece-reason')).toHaveCount(0);expect(await reasonOf(page,'vinted:96001')).toBe('unspecified');
+});
+test('a piece hidden before its details were remembered can still be given a reason',async({page})=>{
+ await page.goto('/settings');
+ expect(await reasonOf(page,'vinted:95001')).toBeUndefined();   // hidden, in the collection, but with no stored row
+ await row(page,'Lemaire').getByRole('button',{name:'Edit reason for Wide jeans',exact:true}).click();await dialog(page).getByRole('button',{name:'Not the right colour',exact:true}).click();
+ await expect(row(page,'Lemaire').locator('.hidden-piece-reason')).toHaveText('Not the right colour');
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('forme-v2')!).tasteFeedback.find((row:{key:string})=>row.key==='vinted:95001'));
+ expect(saved).toMatchObject({key:'vinted:95001',brand:'Lemaire',title:'Wide jeans',reason:'color'});
+ await page.reload();await expect(row(page,'Lemaire').locator('.hidden-piece-reason')).toHaveText('Not the right colour');
+ // and one that has left the collection and has no row at all still keeps its choice
+ await row(page,'Vinted listing 96003').getByRole('button',{name:/^Edit reason for /}).click();await dialog(page).getByRole('button',{name:'Not the right material',exact:true}).click();
+ await expect(row(page,'Vinted listing 96003').locator('.hidden-piece-reason')).toHaveText('Not the right material');expect(await reasonOf(page,'vinted:96003')).toBe('material');
+});
+test('search finds hidden pieces by the reason in words',async({page})=>{
+ await page.goto('/settings');await expect(rows(page).first()).toBeVisible();
+ await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);const keys=Array.from({length:6},(_,i)=>`vinted:99${i}00`);s.dismissed=[...s.dismissed,...keys];s.tasteFeedback=[...s.tasteFeedback,...keys.map((key,i)=>({key,brand:'Auralee',traits:[],style:'',title:'Knit',reason:i%2?'color':'material'}))];localStorage.setItem('forme-v2',JSON.stringify(s));});
+ await page.reload();const search=page.getByRole('searchbox',{name:'Search hidden pieces'});
+ await search.fill('right colour');await expect(rows(page)).toHaveCount(3);await search.fill('material');await expect(rows(page)).toHaveCount(3);await search.fill('not the right');await expect(rows(page)).toHaveCount(6);
+});
+test('the new reasons travel in a backup; an unknown reason is refused whole and changes nothing',async({page})=>{
+ await page.goto('/settings');
+ await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await dialog(page).getByRole('button',{name:'Not the right colour',exact:true}).click();
+ const waiting=page.waitForEvent('download');await page.getByRole('button',{name:'Download settings backup'}).click();
+ const backup=JSON.parse(await readFile((await (await waiting).path())!,'utf8'));
+ expect(backup.settings.tasteFeedback.find((r:{key:string})=>r.key==='vinted:96001').reason).toBe('color');
+ // a clean restore keeps it
+ await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);s.tasteFeedback=[];localStorage.setItem('forme-v2',JSON.stringify(s));});await page.reload();
+ const okPath=test.info().outputPath('ok.json');await writeFile(okPath,JSON.stringify(backup));
+ await page.getByLabel('Restore settings from file',{exact:true}).setInputFiles(okPath);await page.getByRole('button',{name:'Restore this backup'}).click();await page.reload();
+ expect(await reasonOf(page,'vinted:96001')).toBe('color');await expect(row(page,'Comme des Garçons').locator('.hidden-piece-reason')).toHaveText('Not the right colour');
+ // an invented reason is refused before anything changes
+ backup.settings.tasteFeedback.find((r:{key:string})=>r.key==='vinted:96001').reason='colour';
+ const badPath=test.info().outputPath('bad.json');await writeFile(badPath,JSON.stringify(backup));const before=await page.evaluate(()=>localStorage.getItem('forme-v2'));
+ await page.getByLabel('Restore settings from file',{exact:true}).setInputFiles(badPath);
+ await expect(page.getByRole('button',{name:'Restore this backup'})).toHaveCount(0);await expect(page.getByRole('status').filter({hasText:/invalid feedback|nothing was changed/i}).first()).toBeVisible();
+ expect(await page.evaluate(()=>localStorage.getItem('forme-v2'))).toBe(before);
+});
+test('the six reasons fit on a phone, each a comfortable tap target',async({page})=>{
+ await page.setViewportSize({width:340,height:700});await page.goto('/settings');
+ await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await expect(dialog(page)).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ for(const b of await dialog(page).locator('.reason-options button').all()){const box=(await b.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(40);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(340);}
+ const dlg=(await dialog(page).boundingBox())!;expect(dlg.y).toBeGreaterThanOrEqual(0);expect(dlg.y+dlg.height).toBeLessThanOrEqual(700+1);
+});
+
+// ------------------------------------------------------- hidden date, filter, paging
+const seed=async(page:Page,extra:{key:string;reason?:string}[])=>{await expect(rows(page).first()).toBeVisible();await seedRows(page,extra);};
+const seedRows=(page:Page,extra:{key:string;reason?:string}[])=>page.evaluate(rows=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);s.dismissed=[...s.dismissed,...rows.map(row=>row.key)];s.tasteFeedback=[...s.tasteFeedback,...rows.map(row=>({key:row.key,brand:'Auralee',traits:[],style:'',title:`Knit ${row.key.slice(-3)}`,...(row.reason?{reason:row.reason}:{})}))];localStorage.setItem('forme-v2',JSON.stringify(s));},extra);
+const stored=(page:Page,key:string)=>page.evaluate(k=>JSON.parse(localStorage.getItem('forme-v2')!).tasteFeedback.find((row:{key:string})=>row.key===k),key);
+test('a new hide records when it happened; older hides stay undated and a reason change keeps the date',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-25T10:00:00Z')});
+ await page.goto('/items/95002');await page.getByRole('button',{name:'Not for me: Silk shirt',exact:true}).click();
+ await expect.poll(async()=>(await stored(page,'vinted:95002'))?.hiddenAt).toBeTruthy();
+ const hidden=(await stored(page,'vinted:95002')).hiddenAt as string;expect(hidden).toMatch(/^2026-10-25T10:00:0\d\.\d{3}Z$/);
+ expect((await stored(page,'vinted:96001')).hiddenAt).toBeUndefined();   // hidden before dates were recorded
+ await page.goto('/settings');await page.clock.runFor(60_000);
+ await row(page,'Auralee').getByRole('button',{name:'Edit reason for Silk shirt',exact:true}).click();await dialog(page).getByRole('button',{name:'Not the right colour',exact:true}).click();
+ await expect(row(page,'Auralee').locator('.hidden-piece-reason')).toHaveText('Not the right colour');
+ expect(await stored(page,'vinted:95002')).toMatchObject({reason:'color',hiddenAt:hidden});
+ // hiding it again later is a new hide with a new date
+ await row(page,'Auralee').getByRole('button',{name:'Restore Silk shirt',exact:true}).click();await page.goto('/items/95002');
+ await page.getByRole('button',{name:'Not for me: Silk shirt',exact:true}).click();
+ await expect.poll(async()=>((await stored(page,'vinted:95002')).hiddenAt as string)>hidden).toBe(true);
+});
+test('with only a few hidden pieces there is no filter and no Show more',async({page})=>{
+ await page.goto('/settings');await expect(rows(page)).toHaveCount(4);
+ await expect(page.getByRole('group',{name:'Filter by reason'})).toHaveCount(0);await expect(page.getByRole('button',{name:/Show \d+ more/})).toHaveCount(0);
+});
+test('a long list shows twenty at a time, newest first, and keeps going until everything is shown',async({page})=>{
+ await page.goto('/settings');
+ await seed(page,Array.from({length:46},(_,i)=>({key:`vinted:98${String(i).padStart(3,'0')}`})));await page.reload();
+ await expect(rows(page)).toHaveCount(20);
+ await expect(rows(page).first()).toContainText('Knit 045');   // hidden last = shown first
+ const more=page.getByRole('button',{name:/^Show \d+ more/});await expect(more).toHaveText(/Show 20 more\s*30 left/);
+ await more.click();await expect(rows(page)).toHaveCount(40);await expect(more).toHaveText(/Show 10 more\s*10 left/);
+ await more.click();await expect(rows(page)).toHaveCount(50);await expect(more).toHaveCount(0);
+ // restoring one keeps the revealed depth rather than snapping back to twenty
+ await page.getByRole('button',{name:'Restore Knit 045',exact:true}).click();await expect(rows(page)).toHaveCount(49);
+});
+test('filter by reason: counts, one choice at a time, combines with search, and resets paging',async({page})=>{
+ await page.goto('/settings');
+ await seed(page,[{key:'vinted:97001',reason:'color'},{key:'vinted:97002',reason:'color'},{key:'vinted:97003',reason:'material'},{key:'vinted:97004'},{key:'vinted:97005',reason:'unspecified'},{key:'vinted:97006'}]);await page.reload();
+ const group=page.getByRole('group',{name:'Filter by reason'});await expect(group).toBeVisible();
+ expect((await group.getByRole('button').allInnerTexts()).map(text=>text.replace(/\s+/g,' ').trim())).toEqual(['All 10','Not the right material 1','Not the right colour 2','No reason 7']);
+ await expect(group.getByRole('button',{name:/^All/})).toHaveAttribute('aria-pressed','true');await expect(rows(page)).toHaveCount(10);
+ await group.getByRole('button',{name:/^Not the right colour/}).click();
+ await expect(group.getByRole('button',{name:/^Not the right colour/})).toHaveAttribute('aria-pressed','true');await expect(group.getByRole('button',{name:/^All/})).toHaveAttribute('aria-pressed','false');
+ await expect(rows(page)).toHaveCount(2);await expect(page.getByRole('status').filter({hasText:'Showing 2 of 10'})).toBeVisible();
+ await expect(rows(page).locator('.hidden-piece-reason')).toHaveText(['Not the right colour','Not the right colour']);
+ // search narrows within the chosen reason
+ const search=page.getByRole('searchbox',{name:'Search hidden pieces'});await search.fill('97002');await expect(rows(page)).toHaveCount(1);
+ await search.fill('zzz');await expect(page.getByText('No hidden pieces match “zzz”.')).toBeVisible();await search.fill('');
+ // plain hides and "No reason" are one choice
+ await group.getByRole('button',{name:/^No reason/}).click();await expect(rows(page)).toHaveCount(7);
+ // restoring the last piece of a reason drops its choice and falls back to everything
+ await group.getByRole('button',{name:/^Not the right material/}).click();await expect(rows(page)).toHaveCount(1);
+ await rows(page).first().getByRole('button',{name:/^Restore /}).click();
+ await expect(group.getByRole('button',{name:/^Not the right material/})).toHaveCount(0);await expect(group.getByRole('button',{name:/^All/})).toHaveAttribute('aria-pressed','true');await expect(rows(page)).toHaveCount(9);
+});
+test('changing a reason moves the piece between filter choices straight away',async({page})=>{
+ await page.goto('/settings');
+ await seed(page,[{key:'vinted:97001',reason:'color'},{key:'vinted:97002'}]);await page.reload();
+ const group=page.getByRole('group',{name:'Filter by reason'});await expect(group.getByRole('button',{name:/^Not the right colour 1/})).toBeVisible();
+ await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await dialog(page).getByRole('button',{name:'Not the right colour',exact:true}).click();
+ await expect(group.getByRole('button',{name:/^Not the right colour 2/})).toBeVisible();await expect(group.getByRole('button',{name:/^No reason 4/})).toBeVisible();
+});
+test('the filter row wraps on a phone without sideways scrolling and keeps comfortable taps',async({page})=>{
+ await page.setViewportSize({width:340,height:700});await page.goto('/settings');
+ await seed(page,Array.from({length:30},(_,i)=>({key:`vinted:96${String(i+10).padStart(3,'0')}`,reason:['color','material','price','data','style',undefined][i%6]})));await page.reload();
+ const group=page.getByRole('group',{name:'Filter by reason'});await group.scrollIntoViewIfNeeded();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ for(const b of await group.getByRole('button').all()){const box=(await b.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(36);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(340);}
+ const more=page.getByRole('button',{name:/^Show \d+ more/});await more.scrollIntoViewIfNeeded();const box=(await more.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(40);
+});
+test('the hidden date travels in a backup, and a malformed one is refused whole',async({page})=>{
+ await page.goto('/settings');await expect(rows(page).first()).toBeVisible();
+ await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);s.tasteFeedback=s.tasteFeedback.map((row:{key:string})=>row.key==='vinted:96001'?{...row,hiddenAt:'2026-10-25T10:00:00.000Z'}:row);localStorage.setItem('forme-v2',JSON.stringify(s));});await page.reload();
+ const waiting=page.waitForEvent('download');await page.getByRole('button',{name:'Download settings backup'}).click();
+ const backup=JSON.parse(await readFile((await (await waiting).path())!,'utf8'));
+ expect(backup.settings.tasteFeedback.find((r:{key:string})=>r.key==='vinted:96001').hiddenAt).toBe('2026-10-25T10:00:00.000Z');
+ backup.settings.tasteFeedback.find((r:{key:string})=>r.key==='vinted:96001').hiddenAt='last week';
+ const badPath=test.info().outputPath('bad-date.json');await writeFile(badPath,JSON.stringify(backup));const before=await page.evaluate(()=>localStorage.getItem('forme-v2'));
+ await page.getByLabel('Restore settings from file',{exact:true}).setInputFiles(badPath);
+ await expect(page.getByRole('button',{name:'Restore this backup'})).toHaveCount(0);await expect(page.getByRole('status').filter({hasText:/hidden date|nothing was changed/i}).first()).toBeVisible();
+ expect(await page.evaluate(()=>localStorage.getItem('forme-v2'))).toBe(before);
 });
