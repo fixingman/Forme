@@ -130,29 +130,28 @@ test.describe('Undo toast',()=>{
   // the piece stays hidden, and can still be restored from the page
   await expect(page.getByRole('button',{name:'Restore Cotton shirt',exact:true})).toBeVisible();
  });
- test('a small seconds count and a hairline bar show how long is left',async({page})=>{
+ test('a hairline bar shows the remaining time without a seconds counter',async({page})=>{
   await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
   const count=toast(page).locator('.toast-count'),bar=toast(page).locator('.toast-bar');
-  await expect(count).toHaveText('4s');await expect(bar).toHaveCount(1);
+  await expect(count).toHaveCount(0);await expect(bar).toHaveCount(1);
   expect(await bar.evaluate(e=>getComputedStyle(e).animationDuration)).toBe('4s');expect(await bar.evaluate(e=>getComputedStyle(e).animationName)).toBe('toast-drain');
   expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(3);
-  await page.clock.runFor(1_100);await expect(count).toHaveText('3s');await page.clock.runFor(1_000);await expect(count).toHaveText('2s');await page.clock.runFor(1_000);await expect(count).toHaveText('1s');
-  // the count and bar are decoration for the eye; screen readers get the message and the two buttons only
-  await expect(count).toHaveAttribute('aria-hidden','true');await expect(bar).toHaveAttribute('aria-hidden','true');
-  await expect(toast(page)).toHaveAccessibleName('');await expect(toast(page).getByRole('button')).toHaveCount(2);
+  // The bar is decorative; screen readers get the message and its action buttons only.
+  await expect(bar).toHaveAttribute('aria-hidden','true');
+  await expect(toast(page)).toHaveAccessibleName('');await expect(toast(page).getByRole('button')).toHaveCount(3);
  });
  test('the bar sits inside the toast along its bottom edge',async({page})=>{
   await page.goto('/items/92001');await hide(page);
   const [t,b]=await Promise.all([toast(page).boundingBox(),toast(page).locator('.toast-bar').boundingBox()]);
   expect(b!.x).toBeGreaterThanOrEqual(t!.x-0.5);expect(b!.x+b!.width).toBeLessThanOrEqual(t!.x+t!.width+0.5);expect(b!.y+b!.height).toBeLessThanOrEqual(t!.y+t!.height+0.5);expect(b!.y).toBeGreaterThan(t!.y+t!.height-4);
-  expect(t!.height).toBeLessThanOrEqual(60);
+  expect(t!.height).toBeLessThanOrEqual(90);   // a piece toast wraps to two rows to make room for Add reason
  });
  test('hovering freezes both the countdown and the bar, and leaving resumes from where it stopped',async({page})=>{
   await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
-  const bar=toast(page).locator('.toast-bar'),count=toast(page).locator('.toast-count');
+  const bar=toast(page).locator('.toast-bar');
   await page.clock.runFor(1_000);await toast(page).hover();
   await expect(toast(page)).toHaveClass(/is-paused/);expect(await bar.evaluate(e=>getComputedStyle(e).animationPlayState)).toBe('paused');
-  await page.clock.runFor(30_000);await expect(toast(page)).toBeVisible();await expect(count).toHaveText('3s');
+  await page.clock.runFor(30_000);await expect(toast(page)).toBeVisible();await expect(toast(page).locator('.toast-count')).toHaveCount(0);
   await page.mouse.move(5,5);await expect(toast(page)).not.toHaveClass(/is-paused/);expect(await bar.evaluate(e=>getComputedStyle(e).animationPlayState)).toBe('running');
   // about three seconds were left, so it must not restart a full four
   await page.clock.runFor(2_000);await expect(toast(page)).toBeVisible();
@@ -166,16 +165,16 @@ test.describe('Undo toast',()=>{
   await page.evaluate(()=>(document.activeElement as HTMLElement).blur());await expect(toast(page)).not.toHaveClass(/is-paused/);
   await page.clock.runFor(4_500);await expect(toast(page)).toHaveCount(0);
  });
- test('with reduced motion the bar is hidden but the seconds count remains and it still dismisses',async({page})=>{
+ test('with reduced motion the progress decoration is hidden and it still dismisses',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.goto('/items/92001');await hide(page);await freeze(page);
-  await expect(toast(page).locator('.toast-bar')).toBeHidden();await expect(toast(page).locator('.toast-count')).toBeVisible();
+  await expect(toast(page).locator('.toast-bar')).toBeHidden();await expect(toast(page).locator('.toast-count')).toHaveCount(0);
   await page.clock.runFor(4_500);await expect(toast(page)).toHaveCount(0);
  });
  test('hiding another piece while it is showing starts a fresh countdown for the new message',async({page})=>{
   await page.clock.install();await page.goto('/following');
   const buttons=page.getByRole('button',{name:/^Not for me:/});await buttons.first().click();await freeze(page);
   await page.clock.runFor(3_000);await buttons.first().click();
-  await expect(toast(page).locator('.toast-count')).toHaveText('4s');await page.clock.runFor(3_000);await expect(toast(page)).toBeVisible();
+  await expect(toast(page)).toBeVisible();await page.clock.runFor(3_000);await expect(toast(page)).toBeVisible();
   await page.clock.runFor(1_500);await expect(toast(page)).toHaveCount(0);
  });
  test('Undo before it goes restores the piece and replaces the toast with the plain confirmation',async({page})=>{

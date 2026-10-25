@@ -1,7 +1,43 @@
-'use client';
-import Link from 'next/link';
-import {listingKey} from '@/lib/domain/recommendations.mjs';
-import type {Listing} from '@/lib/catalog';
-export default function HiddenPieces({keys,source,restore}:{keys:string[];source:Listing[];restore:(key:string)=>void}){
- return <section className="panel" id="hidden-pieces"><h3>Hidden pieces</h3><p>Not for me hides a piece from all your feeds and helps refine Discover. Your saves stay saved. Bring pieces back here.</p>{keys.length?<ul className="hidden-feedback-list">{keys.map(key=>{const item=source.find(item=>listingKey(item)===key);return <li key={key}><span>{item?<Link href={`/items/${item.id}`}>{item.brand} · {item.title}</Link>:'A piece outside the current collection'}</span><button className="textbutton" aria-label={`Restore ${item?.title??key}`} onClick={()=>restore(key)}>Restore</button></li>;})}</ul>:<p className="small section-note">You haven’t hidden any pieces.</p>}</section>;
+"use client";
+import { useMemo } from "react";
+import { hiddenEntries } from "@/lib/domain/hidden-pieces.mjs";
+import type { Listing } from "@/lib/catalog";
+import HiddenPieceList, { type HiddenEntry } from "./hidden-piece-list";
+export default function HiddenPieces({
+  keys,
+  source,
+  remembered = [],
+  restore,
+  editReason,
+}: {
+  keys: string[];
+  source: Listing[];
+  remembered?: {
+    key: string;
+    brand: string;
+    title?: string;
+    imageUrl?: string;
+    sourceUrl?: string;
+  }[];
+  restore: (key: string) => void;
+  editReason?: (key: string) => void;
+}) {
+  const entries = useMemo(
+    () => hiddenEntries({ keys, source, remembered }) as HiddenEntry[],
+    [keys, source, remembered],
+  );
+  return (
+    <section className="panel" id="hidden-pieces">
+      <h3>Hidden pieces</h3>
+      <p>
+        Not for me hides a piece from all your feeds and helps refine Discover. Your saves stay
+        saved. Bring pieces back here.
+      </p>
+      {entries.length ? (
+        <HiddenPieceList entries={entries} restore={restore} editReason={editReason} />
+      ) : (
+        <p className="small section-note">You haven’t hidden any pieces.</p>
+      )}
+    </section>
+  );
 }

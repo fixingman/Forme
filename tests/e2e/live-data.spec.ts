@@ -51,7 +51,7 @@ test('English titles and conditions expose original listing text',async({page})=
  await page.goto('/items/10447404161');
  await expect(page.getByRole('heading',{name:'Acne leather jacket',exact:true})).toBeVisible();
  await expect(page.locator('.detail .facts')).toContainText('Size');await expect(page.locator('.detail .facts')).toContainText('Good');
- await page.getByText('Show original listing text',{exact:true}).click();
+ await page.getByText('Translated · show original',{exact:true}).click();
  await expect(page.locator('.original-listing').getByText('Acne skinnjacka',{exact:true})).toBeVisible();
  await expect(page.locator('.original-listing')).toContainText('Condition: Bra');
 });
@@ -60,9 +60,27 @@ test('larger feeds reveal additional listings without rendering the entire batch
  await page.addInitScript(brands=>localStorage.setItem('forme-v2',JSON.stringify({following:brands})),[...new Set(snapshot.items.map(item=>item.brand))]);
  await page.goto('/following');
  await expect(page.locator('.product')).toHaveCount(24);
- await page.getByRole('button',{name:'Show more',exact:false}).click();
+ await expect(page.getByRole('button',{name:/Show more/})).toHaveCount(0);
+ await page.getByTestId('feed-load-more').scrollIntoViewIfNeeded();
  await expect(page.locator('.product')).toHaveCount(29);
  await expect(page.getByRole('button',{name:'Show more',exact:false})).toHaveCount(0);
+});
+
+for(const width of [1280,390])test(`scrolling loads successive batches through the end at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:844});
+ const pieces=Array.from({length:93},(_,index)=>({...first,id:94000+index,sourceId:String(94000+index),sourceKey:`vinted:${94000+index}`,sourceUrl:`https://www.vinted.se/items/${94000+index}-fixture`}));
+ await page.addInitScript(brand=>localStorage.setItem('forme-v2',JSON.stringify({following:[brand]})),first.brand);
+ await page.route('**/data/vinted.json',route=>route.fulfill({json:{...snapshot,items:pieces}}));
+ const posts:string[]=[];page.on('request',request=>{if(request.method()==='POST')posts.push(request.url());});
+ await page.goto('/following');await expect(page.locator('.product')).toHaveCount(24);
+ for(const count of [48,72,93]){
+  await page.getByTestId('feed-load-more').scrollIntoViewIfNeeded();
+  await expect(page.locator('.product')).toHaveCount(count);
+ }
+ await expect(page.getByTestId('feed-load-more')).toHaveCount(0);
+ const ids=await page.locator('.product').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-testid')));
+ expect(new Set(ids).size).toBe(93);expect(posts).toEqual([]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test('with no listings anywhere, the banner says so plainly instead of showing a JSON parse error',async({page})=>{
@@ -105,4 +123,36 @@ test('a photo that loads shows no placeholder and no extra link',async({page})=>
  await page.route(/vinted\.net/,route=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==','base64')}));
  await page.goto(`/items/${first.id}`);await expect(page.locator('.detail .photo img')).toBeVisible();
  await expect(page.getByText('Photo unavailable')).toHaveCount(0);await expect(page.locator('.photo-fallback-link')).toHaveCount(0);
+});
+
+for(const width of [1280,390])test(`deep-feed feedback and item-page Back preserve browsing at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:844});
+ const pieces=Array.from({length:93},(_,index)=>({...first,id:95000+index,sourceId:String(95000+index),sourceKey:`vinted:${95000+index}`,sourceUrl:`https://www.vinted.se/items/${95000+index}-fixture`}));
+ await page.addInitScript(brand=>localStorage.setItem('forme-v2',JSON.stringify({following:[brand]})),first.brand);
+ await page.route('**/data/vinted.json',route=>route.fulfill({json:{...snapshot,items:pieces}}));
+ await page.goto('/following');await expect(page.locator('.product')).toHaveCount(24);
+ for(const count of [48,72]){await page.getByTestId('feed-load-more').scrollIntoViewIfNeeded();await expect(page.locator('.product')).toHaveCount(count);}
+ const target=page.getByTestId('listing-95060');const dislike=target.getByRole('button',{name:/Not for me:/});
+ await dislike.scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);await dislike.click();
+ await expect(target).toHaveCount(0);await expect(page.locator('.product')).toHaveCount(72);
+ expect(Math.abs(await page.evaluate(()=>scrollY)-before)).toBeLessThan(200);
+ const next=page.getByTestId('listing-95061');await next.locator('.productlink').scrollIntoViewIfNeeded();
+ const browsing=await page.evaluate(()=>scrollY);await next.locator('.productlink').click();await expect(page).toHaveURL(/\/items\/95061$/);
+ await page.goBack();await expect(page).toHaveURL(/\/following$/);await expect(page.locator('.product')).toHaveCount(72);
+ await expect.poll(async()=>Math.abs(await page.evaluate(()=>scrollY)-browsing)).toBeLessThan(200);
+});
+
+test('a background listing update preserves the expanded feed',async({page})=>{
+ await page.clock.install();
+ const pieces=Array.from({length:93},(_,index)=>({...first,id:96000+index,sourceId:String(96000+index),sourceKey:`vinted:${96000+index}`,sourceUrl:`https://www.vinted.se/items/${96000+index}-fixture`}));
+ await page.addInitScript(brand=>localStorage.setItem('forme-v2',JSON.stringify({following:[brand]})),first.brand);
+ let reads=0;
+ await page.route('**/data/vinted.json',route=>{reads++;return route.fulfill({json:{...snapshot,items:pieces}});});
+ await page.goto('/following');await expect(page.locator('.product')).toHaveCount(24);
+ for(const count of [48,72]){await page.getByTestId('feed-load-more').scrollIntoViewIfNeeded();await expect(page.locator('.product')).toHaveCount(count);}
+ await page.getByTestId('listing-96060').scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);
+ pieces.unshift({...first,id:96999,sourceId:'96999',sourceKey:'vinted:96999',sourceUrl:'https://www.vinted.se/items/96999-fixture',age:0});
+ await page.clock.runFor(61000);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+ await expect.poll(()=>reads).toBe(2);await expect(page.getByTestId('listing-96999')).toHaveCount(1);
+ await expect(page.locator('.product')).toHaveCount(72);expect(Math.abs(await page.evaluate(()=>scrollY)-before)).toBeLessThan(200);
 });

@@ -1,6 +1,83 @@
-'use client';
-import type {ListingSnapshot} from '@/lib/load-listings';
-export default function DataQuality({snapshot}:{snapshot:ListingSnapshot}){
- const q=snapshot.quality;if(!q)return null;
- return <section className="panel" id="data-quality"><h3>Data quality</h3><p>Checks on the cached collection. Passing validation does not verify authenticity or current availability.</p><dl className="quality-metrics"><div><dt>Valid listing records</dt><dd>{q.accepted} of {q.input}</dd></div><div><dt>Excluded or duplicate records</dt><dd>{q.rejected}</dd></div><div><dt>Not observed in over 7 days</dt><dd>{q.stale}</dd></div><div><dt>Availability unknown</dt><dd>{q.unknownAvailability}</dd></div><div><dt>Reported sold, reserved or unavailable</dt><dd>{q.unavailable}</dd></div><div><dt>Department unknown</dt><dd>{q.unknownDepartment}</dd></div><div><dt>Department from search scope</dt><dd>{q.departmentFromSearch}</dd></div><div><dt>Department from explicit title wording</dt><dd>{q.departmentFromTitle}</dd></div><div><dt>Department from provider label</dt><dd>{q.departmentFromProvider}</dd></div><div><dt>Category hint unavailable</dt><dd>{q.unknownCategory}</dd></div><div><dt>English title translation pending</dt><dd>{q.pendingTranslations}</dd></div></dl><p className="small">Oldest item observation: {q.oldestObservation?new Date(q.oldestObservation).toLocaleString():'Unknown'}. Refreshing some searches does not refresh every item. Category hints come from text; search-scoped departments are not individual listing labels.</p>{q.issues.length>0&&<details><summary>Excluded record reasons</summary><ul>{q.issues.slice(0,100).map((issue:{key:string|null;reasons:string[]},index:number)=><li key={index}>{issue.key??'Unknown record'} · {issue.reasons.join(', ')}</li>)}</ul></details>}</section>;
+"use client";
+import type { ListingSnapshot } from "@/lib/load-listings";
+export default function DataQuality({ snapshot }: { snapshot: ListingSnapshot }) {
+  const q = snapshot.quality;
+  if (!q) return null;
+  return (
+    <section className="panel" id="data-quality">
+      <h3>Data quality</h3>
+      <p>
+        Checks on the cached collection. Passing validation does not verify authenticity or current
+        availability.
+      </p>
+      <dl className="quality-metrics">
+        <div>
+          <dt>Valid listing records</dt>
+          <dd>
+            {q.accepted} of {q.input}
+          </dd>
+        </div>
+        <div>
+          <dt>Excluded or duplicate records</dt>
+          <dd>{q.rejected}</dd>
+        </div>
+        <div>
+          <dt>Not observed in over 7 days</dt>
+          <dd>{q.stale}</dd>
+        </div>
+        <div>
+          <dt>Availability unknown</dt>
+          <dd>{q.unknownAvailability}</dd>
+        </div>
+        <div>
+          <dt>Reported sold, reserved or unavailable</dt>
+          <dd>{q.unavailable}</dd>
+        </div>
+        <div>
+          <dt>Department unknown</dt>
+          <dd>{q.unknownDepartment}</dd>
+        </div>
+        <div>
+          <dt>Department from search scope</dt>
+          <dd>{q.departmentFromSearch}</dd>
+        </div>
+        <div>
+          <dt>Department from explicit title wording</dt>
+          <dd>{q.departmentFromTitle}</dd>
+        </div>
+        <div>
+          <dt>Department from provider label</dt>
+          <dd>{q.departmentFromProvider}</dd>
+        </div>
+        <div>
+          <dt>Category hint unavailable</dt>
+          <dd>{q.unknownCategory}</dd>
+        </div>
+        <div>
+          <dt>English title translation pending</dt>
+          <dd>{q.pendingTranslations}</dd>
+        </div>
+      </dl>
+      <p className="small">
+        Oldest item observation:{" "}
+        {q.oldestObservation ? new Date(q.oldestObservation).toLocaleString() : "Unknown"}.
+        Refreshing some searches does not refresh every item. Category hints come from text;
+        search-scoped departments are not individual listing labels.
+      </p>
+      {q.issues.length > 0 && (
+        <details>
+          <summary>Excluded record reasons</summary>
+          <ul>
+            {q.issues
+              .slice(0, 100)
+              .map((issue: { key: string | null; reasons: string[] }, index: number) => (
+                <li key={index}>
+                  {issue.key ?? "Unknown record"} · {issue.reasons.join(", ")}
+                </li>
+              ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
 }

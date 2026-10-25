@@ -12,7 +12,7 @@ test('bad prices and source links are excluded; item-specific stale data and unk
  await page.route('**/api/listings',route=>route.fulfill({json:{...fixture,fetchedAt:new Date().toISOString(),items:[{...first,fetchedAt:at,firstSeenAt:at},{...first,id:999991,price:null},{...first,id:999992,sourceUrl:'https://evil.example/item'}]}}));
  await page.goto('/following');const card=page.getByTestId(`listing-${first.id}`);await expect(card).toBeVisible();await expect(card).toContainText('Price last observed over 7 days ago');await expect(page.locator('.product')).toHaveCount(1);
  await card.getByRole('link',{name:`View ${first.brand} ${first.title}`,exact:true}).click();
- await expect(page.getByText('Availability unknown.',{exact:false})).toBeVisible();await expect(page.getByText('Price is the last observed item price',{exact:false})).toBeVisible();
+ await expect(page.locator('.item-status')).toContainText('Availability not confirmed');await expect(page.locator('.item-status')).toContainText('over 7 days ago');await expect(page.locator('.detail-price')).toContainText('excl. delivery and fees');
  await page.goto('/tools');await page.locator('summary').filter({hasText:/^Data quality$/}).click();const report=page.locator('#data-quality');await expect(report).toBeVisible();await expect(report.locator('div').filter({has:page.locator('dt',{hasText:'Excluded or duplicate records'})}).locator('dd')).toHaveText('2');
 });
 test('reported sold pieces leave shopping feeds but remain saved with their status and backup provenance',async({page})=>{
@@ -20,7 +20,7 @@ test('reported sold pieces leave shopping feeds but remain saved with their stat
  await page.route('**/api/listings',route=>route.fulfill({json:{...fixture,items:[{...first,availability:'sold',availabilitySource:'provider',availabilityObservedAt:first.fetchedAt}]}}));
  await page.goto('/following');await expect(page.locator('.product')).toHaveCount(0);
  await page.goto('/saved');await expect(page.getByTestId(`listing-${first.id}`)).toContainText('Sold');
- await page.getByTestId(`listing-${first.id}`).getByRole('link',{name:`View ${first.brand} ${first.title}`,exact:true}).click();await expect(page.getByText('Sold.',{exact:false})).toBeVisible();
- await page.getByRole('button',{name:'♥ Saved — remove'}).click();await page.getByRole('button',{name:'♡ Save item',exact:true}).click();
+ await page.getByTestId(`listing-${first.id}`).getByRole('link',{name:`View ${first.brand} ${first.title}`,exact:true}).click();await expect(page.locator('.item-status')).toHaveAttribute('data-state','sold');await expect(page.locator('.item-status strong')).toHaveText('Sold');
+ await page.getByRole('button',{name:'Saved',exact:true}).click();await page.getByRole('button',{name:'Save item',exact:true}).click();
  await page.goto('/settings');const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'Download settings backup'}).click();const download=await downloading;const {readFile}=await import('node:fs/promises');const backup=JSON.parse(await readFile((await download.path())!,'utf8'));expect(backup.savedListings[0].availability).toBe('sold');expect(backup.savedListings[0].availabilitySource).toBe('provider');
 });

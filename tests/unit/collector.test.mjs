@@ -106,3 +106,14 @@ test('CLI collection respects the daily cap configured in refresh controls',asyn
   await assert.rejects(readFile(join(dir,'calls.txt'),'utf8'),{code:'ENOENT'});
  }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('CLI honors cap-off mode without a second hidden 15-credit limit or erasing usage',async()=>{
+ const dir=await setup();try{
+  const {refreshControl}=await import('../../lib/server/refresh-control.mjs');const control=refreshControl({root:dir});control.setBudget(0);control.close();
+  assert.equal(run(dir).status,0);
+  const path=join(dir,'public/data/vinted.json'),snapshot=JSON.parse(await readFile(path,'utf8'));snapshot.fetchedAt='2020-01-01T00:00:00Z';await writeFile(path,JSON.stringify(snapshot));
+  const second=run(dir);assert.equal(second.status,0,second.stderr);
+  assert.equal((await readFile(join(dir,'calls.txt'),'utf8')).trim().split('\n').length,6);
+  const usage=JSON.parse(await readFile(join(dir,'.forme-data/usage.json'),'utf8'))[new Date().toISOString().slice(0,10)];assert.equal(usage.reservedCredits,30);assert.equal(usage.reportedCredits,30);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});

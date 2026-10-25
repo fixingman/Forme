@@ -34,8 +34,10 @@ test('the time counts up on its own, second by second, then minute by minute, th
  await expect(age).toHaveText('42s');
  await page.clock.runFor(8_000);await expect(age).toHaveText('50s');
  await page.clock.runFor(10_000);await expect(age).toHaveText('1m');
- await page.clock.runFor(61*60_000);await expect(age).toHaveText('1h');
- await page.clock.runFor(24*3600_000);await expect(age).toHaveText('1d');
+ // Hour- and day-sized jumps use fastForward (timers due in the gap fire once). runFor would replay every timer in between, so the
+ // test would slow down with each polling interval the app ever adds, and it is not what this test is about.
+ await page.clock.fastForward(61*60_000);await expect(age).toHaveText('1h');
+ await page.clock.fastForward(24*3600_000);await expect(age).toHaveText('1d');
 });
 test('it is one accessible button: named Find new pieces, described by the latest check, with the exact time as a tooltip',async({page})=>{
  await at(page,'/following',3*60_000);

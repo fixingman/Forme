@@ -1,181 +1,1080 @@
-'use client';
+"use client";
+import HomePage from "./pages/home-page";
+import DiscoverPage from "./pages/discover-page";
+import BrandsPage from "./pages/brands-page";
+import StylesPage from "./pages/styles-page";
+import ToolsPage from "./pages/tools-page";
+import SettingsPage from "./pages/settings-page";
 
-import Link from 'next/link';
-import {canBrowse,freshness,availability} from '@/lib/domain/data-trust.mjs';
-import DataQuality from './data-quality';
-import GlobalFilters from './global-filters';
-import Welcome from './welcome';
-import ProductPhoto from './product-photo';
-import HiddenPieces from './hidden-pieces';
-import ListingFeedback from './listing-feedback';
-import {navigation as nav,shoppingNavigation,preferenceNavigation,mobileNavigation,moreNavigation} from '@/lib/navigation';
-import {loadListings,type ListingSnapshot} from '@/lib/load-listings';
-import RefreshControls from './refresh-controls';
-import FeedFreshness from './feed-freshness';
-import UndoToast from './undo-toast';
-import {useListingUpdates} from '@/lib/use-listing-updates';
-import {feedbackSnapshot} from '@/lib/domain/taste-profile.mjs';
-import FeedbackReview from './feedback-review';
-import {homeActivity} from '@/lib/domain/home-activity.mjs';
-import {listingGender,matchesGender} from '@/lib/domain/gender.mjs';
-import LocalProfile from './local-profile';
-import {recommendListings,listingKey} from '@/lib/domain/recommendations.mjs';
-import {classifyListing} from '@/lib/domain/classification.mjs';
-import {groupedSizing} from '@/lib/domain/sizes.mjs';
-import {passesListingReview} from '@/lib/domain/listing-review.mjs';
-import {sameBrand} from '@/lib/domain/brands.mjs';
-import SettingsTransfer from './settings-transfer';
-import AccountPanel from './account-panel';
-import { useProfileSync } from '@/lib/use-profile-sync';
-import type { Backup } from '@/lib/settings-backup';
-import { englishListing } from '@/lib/domain/listing-language.mjs';
-import { Home, Compass, Users, Search, Gem, Mail, SlidersHorizontal, Tags, Heart, Settings, Menu, PanelLeftClose, PanelLeftOpen, Plus, X, ChevronLeft, ChevronRight, Sparkles, Ruler, type LucideIcon } from 'lucide-react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { catalog, images, items, type Listing } from '@/lib/catalog';
-import { baseStyles, digestListings, initialPreferences, isNew, matchesStyle, normalizePreferences, searchListings, suggestionRules, visibleListings, type Preferences, type Search as SavedSearch } from '@/lib/preferences';
+import Link from "next/link";
+import PreferencesDialog, { type Modal } from "./preferences-dialog";
+import AppShell from "./layout/app-shell";
+import Dialog from "./ui/dialog";
+import { Header, Empty, ListingSkeleton } from "./ui/page-states";
+import { FeedContext } from "./listings/feed-context";
+import Grid from "./listings/listing-grid";
+import { ProductRail } from "./listings/feed-sections";
+import ItemDetail from "./pages/item-detail";
+import { canBrowse } from "@/lib/domain/data-trust.mjs";
+import Welcome from "./welcome";
 
-const money = (price: number, currency='SEK') => new Intl.NumberFormat('sv-SE',{style:'currency',currency,minimumFractionDigits:0,maximumFractionDigits:2}).format(price);
-const photo = (item:Listing) => item.imageUrl ?? images[item.image];
-type Modal = { kind: 'search'; id?: number } | {kind: 'style'; name?: string} | {kind: 'reset'} | {kind:'sizes'} | {kind:'exclude-brand';brand:string};
-type FeedbackUndo = {kind:'piece';key:string} | {kind:'brand';brand:string;previous:'Following'|'Neutral'|'Excluded'};
+import { loadListings, type ListingSnapshot } from "@/lib/load-listings";
+import RefreshControls from "./refresh-controls";
+import FeedFreshness from "./feed-freshness";
+import { useListingUpdates } from "@/lib/use-listing-updates";
+import { feedbackSnapshot } from "@/lib/domain/taste-profile.mjs";
+import RankingPreview from "./ranking-preview";
+import UndoToast from "./undo-toast";
+import DislikeReasonDialog from "./dislike-reason";
+import LearningDashboard from "./learning-dashboard";
+import { useLearning, type DislikeReason } from "@/lib/use-learning";
+import { orderEligible } from "@/lib/domain/learning.mjs";
+import { matchesGender } from "@/lib/domain/gender.mjs";
+import { recommendListings, listingKey } from "@/lib/domain/recommendations.mjs";
+import { groupedSizing } from "@/lib/domain/sizes.mjs";
+import { passesListingReview } from "@/lib/domain/listing-review.mjs";
+import { sameBrand } from "@/lib/domain/brands.mjs";
+import { useProfileSync } from "@/lib/use-profile-sync";
+import type { Backup } from "@/lib/settings-backup";
+import { englishListing } from "@/lib/domain/listing-language.mjs";
+import { Mail, SlidersHorizontal, Plus, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { catalog, items, type Listing } from "@/lib/catalog";
+import {
+  digestListings,
+  initialPreferences,
+  isNew,
+  matchesStyle,
+  normalizePreferences,
+  searchListings,
+  suggestionRules,
+  visibleListings,
+  type Preferences,
+  type Search as SavedSearch,
+} from "@/lib/preferences";
 
-function Dialog({title, close, children,className=''}: {title:string; close:()=>void; children:React.ReactNode;className?:string}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(()=>{ const dialog=ref.current; const previous=document.activeElement as HTMLElement; const overflow=document.body.style.overflow;document.body.style.overflow='hidden';dialog?.showModal(); return ()=>{dialog?.close();document.body.style.overflow=overflow;previous?.focus();}; },[]);
-  return <dialog ref={ref} className={`modal ${className}`} aria-labelledby="dialog-title" onCancel={close} onClick={event=>{if(event.target===ref.current)close();}}><div className="modalhead"><h2 id="dialog-title">{title}</h2><button onClick={close} aria-label="Close dialog"><X/></button></div>{children}</dialog>;
-}
-function Header({title,description,children,status}: {title:string;description:string;children?:React.ReactNode;status?:React.ReactNode}) {return <><div className="head"><div><h1>{title}</h1><p>{description}</p></div>{children&&<div className="head-actions">{children}</div>}</div>{status}</>;}
-function Empty({children,title,action}: {children:React.ReactNode;title?:string;action?:React.ReactNode}) {return <div className="empty">{title&&<h2>{title}</h2>}<div className="empty-description">{children}</div>{action&&<div className="empty-actions">{action}</div>}</div>;}
-
-const FeedContext=createContext<{data:Preferences;list:Listing[];reasons:Map<string,string>;toggleSave:(id:number)=>void;addSuggestion:(name:string)=>void;dismiss:(item:Listing)=>void;restore:(key:string)=>void;brandPreferences:(brand:string)=>void}|null>(null);
-  function Card({item}: {item:Listing}) {const {data,reasons,toggleSave,dismiss,restore,brandPreferences}=useContext(FeedContext)!;const discover=usePathname()==='/discover'&&!!item.source;const saved=data.saved.includes(item.id);return <article className="product" data-testid={`listing-${item.id}`}><div className="photo"><Link href={`/items/${item.id}`} aria-label={`View ${item.brand} ${item.title}`}><ProductPhoto src={photo(item)} alt={item.source?item.title:`Illustrative ${item.title}`}/></Link>{isNew(item)?<span className="flag new">{item.source?'New to FORME':'New today'}</span>:!item.source&&item.rarity>=8?<span className="flag rare">Rare find</span>:null}<button className={`heart ${saved?'saved':''}`} onClick={()=>toggleSave(item.id)} aria-label={`${saved?'Unsave':'Save'} ${item.brand} ${item.title}`} aria-pressed={saved}><Heart fill={saved?'currentColor':'none'}/></button></div><div className="productmeta"><Link href={`/items/${item.id}`} className="productlink"><strong>{item.brand}</strong><div className="title">{item.title}</div></Link><div className="card-description">{item.condition??(item.source?'Condition not provided':'Very good')}{item.size?.trim()&&item.size.trim().toLowerCase()!=='not provided'&&<> · Size {item.size}</>}</div><div className="price">{money(item.price,item.currency)}{Number.isFinite(item.previousPrice)&&item.previousPrice!==item.price&&<span className="previous-price">Previously {money(item.previousPrice!,item.currency)} · {item.price<item.previousPrice!?'down':'up'} {money(Math.abs(item.price-item.previousPrice!),item.currency)}</span>}</div>{item.source&&(!canBrowse(item)||freshness(item).state==='stale')&&<p className="listing-status">{!canBrowse(item)?availability(item).label:'Price last observed over 7 days ago'}</p>}<ListingFeedback item={item} hidden={data.dismissed.includes(listingKey(item))} dismiss={()=>dismiss(item)} restore={()=>restore(listingKey(item))} brandPreferences={()=>brandPreferences(item.brand)}/>{discover&&<p className="small">{reasons.get(listingKey(item))}</p>}</div></article>;}
-  function Grid({values}: {values:Listing[]}) {const context=useContext(FeedContext);const [shown,setShown]=useState(24);const signature=values.map(item=>item.id).join(',');useEffect(()=>setShown(24),[signature]);return values.length?<><div className="grid">{values.slice(0,shown).map(item=><Card key={item.id} item={item}/>)}</div>{shown<values.length&&<div className="load-more"><button className="btn light" onClick={()=>setShown(count=>count+24)}>Show more · {Math.min(shown,values.length)} of {values.length}</button></div>}</>:<Empty title="No matching pieces yet." action={<><Link className="btn light" href="/settings">Review preferences</Link></>}>Try another style or review your preferences. Your saved choices have not changed.</Empty>;}
-  function Section({title,href,values,description}: {title:string;href:string;values:Listing[];description?:string}) {return <section className="feed-section"><div className="sectionhead"><div><h2>{title}</h2>{description&&<p className="small">{description}</p>}</div><Link className="textlink" href={href}>View all →</Link></div><Grid values={values.slice(0,4)}/></section>;}
-function Suggestions() {
-  const {data,addSuggestion}=useContext(FeedContext)!;
-  const names=Object.keys(suggestionRules).filter(name=>!data.styles.includes(name));
-  return <section className="suggestions"><div className="suggestion-label"><Sparkles/><div><h2>Style ideas</h2><p>Starting points for your personal edit</p></div></div><div className="suggestion-options">{names.slice(0,3).map(name=><div className="suggestion-option" key={name}><span>{name}</span><button className="icon-button" onClick={()=>addSuggestion(name)} aria-label={`Add style ${name}`} title={`Add ${name} to My Styles`}><Plus/></button></div>)}{!names.length&&<Link href="/styles">Edit your styles →</Link>}</div></section>;
-}
-function ProductRail({search,values}:{search:SavedSearch;values:Listing[]}) {
- const ref=useRef<HTMLDivElement>(null);const [position,setPosition]=useState({left:false,right:false});
- function measure(){const el=ref.current;if(el)setPosition({left:el.scrollLeft>2,right:el.scrollLeft+el.clientWidth<el.scrollWidth-2});}
- useEffect(()=>{measure();const observer=new ResizeObserver(measure);if(ref.current)observer.observe(ref.current);return()=>observer.disconnect();},[values.length]);
- return <section className="search-feed"><div className="sectionhead"><div><Link href={`/searches/${search.id}`}><h2>{search.name}</h2></Link><p>{values.length} matches · {values.filter(isNew).length} {values.some(item=>item.source)?'new this week':'new today'}</p></div><div className="rail-actions"><Link className="textlink" href={`/searches/${search.id}`}>View search</Link>{(position.left||position.right)&&<><button className="icon-button" aria-label={`Previous ${search.name} pieces`} disabled={!position.left} onClick={()=>ref.current?.scrollBy({left:-ref.current.clientWidth*.8,behavior:'smooth'})}><ChevronLeft/></button><button className="icon-button" aria-label={`Next ${search.name} pieces`} disabled={!position.right} onClick={()=>ref.current?.scrollBy({left:ref.current.clientWidth*.8,behavior:'smooth'})}><ChevronRight/></button></>}</div></div>{values.length?<div ref={ref} className="product-rail" onScroll={measure} tabIndex={0} role="region" aria-label={`${search.name} matching pieces`}>{values.map(item=><Card key={item.id} item={item}/>)}</div>:<Empty>No matches yet. <Link href={`/searches/${search.id}`}>Edit this search →</Link></Empty>}</section>;
-}
+type FeedbackUndo =
+  | { kind: "piece"; key: string }
+  | {
+      kind: "brand";
+      brand: string;
+      previous: "Following" | "Neutral" | "Excluded";
+    };
 
 export default function Forme() {
-  const pathname=usePathname(), params=useSearchParams(), router=useRouter();
-  const [data,setData]=useState<Preferences>(initialPreferences), [ready,setReady]=useState(false), [storageError,setStorageError]=useState('');
-  const [mode,setMode]=useState<'live'|'demo'>('live'), [snapshot,setSnapshot]=useState<ListingSnapshot|null>(null), [feedError,setFeedError]=useState('');
-  const [savedListings,setSavedListings]=useState<Listing[]>([]);
-  const [needsSetup,setNeedsSetup]=useState(false),[retrying,setRetrying]=useState(false),[refreshOpen,setRefreshOpen]=useState(false);
-  const [feedbackUndo,setFeedbackUndo]=useState<FeedbackUndo|null>(null);
+  const windows = useRef(new Map<string, import("./listings/feed-context").FeedWindow>());
+  const pathname = usePathname(),
+    params = useSearchParams(),
+    router = useRouter();
+  const [data, setData] = useState<Preferences>(initialPreferences),
+    [ready, setReady] = useState(false),
+    [storageError, setStorageError] = useState("");
+  const [mode, setMode] = useState<"live" | "demo">("live"),
+    [snapshot, setSnapshot] = useState<ListingSnapshot | null>(null),
+    [feedError, setFeedError] = useState("");
+  const [savedListings, setSavedListings] = useState<Listing[]>([]);
+  const [needsSetup, setNeedsSetup] = useState(false),
+    [retrying, setRetrying] = useState(false),
+    [refreshOpen, setRefreshOpen] = useState(false);
+  const [reasonKey, setReasonKey] = useState<string | null>(null);
+  const [feedbackUndo, setFeedbackUndo] = useState<FeedbackUndo | null>(null);
   // The Undo toast clears itself (see undo-toast.tsx); hidden pieces and brands stay restorable from Settings → Hidden pieces and Your brands.
-  useEffect(()=>{try{setMode(localStorage.getItem('forme-data-mode')==='demo'?'demo':'live');setSavedListings(JSON.parse(localStorage.getItem('forme-saved-listings')??'[]'));}catch{}
-    const controller=new AbortController();loadListings(controller.signal).then(setSnapshot).catch(error=>{if(!controller.signal.aborted)setFeedError(error.message??'Live listings could not be loaded. Please try again.');});return()=>controller.abort();},[]);
-  async function reloadListings(){setSnapshot(await loadListings());setFeedError('');}
-  async function retryListings(){setRetrying(true);try{await reloadListings();}catch(error){setFeedError((error as Error).message);}finally{setRetrying(false);}}
-  function switchMode(value:'live'|'demo'){setMode(value);try{localStorage.setItem('forme-data-mode',value);}catch{}}
-  const [collapsed,setCollapsed]=useState(false), [styleMenu,setStyleMenu]=useState(false);
-  const [modal,setModal]=useState<Modal|null>(null), [toast,setToast]=useState(''), [brandQuery,setBrandQuery]=useState(''), [brandTab,setBrandTab]=useState('All'), [menu,setMenu]=useState(false), [formError,setFormError]=useState('');
-  useEffect(()=>{const controller=new AbortController();async function load(){let preferences=initialPreferences;try{const raw=localStorage.getItem('forme-v2')??localStorage.getItem('forme-v1');if(raw){preferences=normalizePreferences(JSON.parse(raw));if(localStorage.getItem('forme-onboarding-pending')==='1'&&localStorage.getItem('forme-onboarding-complete')!=='1')setNeedsSetup(true);}else if(localStorage.getItem('forme-onboarding-complete')!=='1'){localStorage.setItem('forme-onboarding-pending','1');preferences=normalizePreferences({...initialPreferences,following:[],excluded:[],styles:[],searches:[],saved:[]});setNeedsSetup(true);}setCollapsed(localStorage.getItem('forme-sidebar')==='collapsed');}catch{setStorageError('Saved preferences could not be read. This session starts with the sample preferences.');}
-    try{const response=await fetch('/api/size-profile',{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(2000)]),cache:'no-store'});if(response.ok){const {profile,genderProfile}=await response.json();if(genderProfile&&typeof genderProfile.id==='string'&&localStorage.getItem('forme-gender-profile')!==genderProfile.id){preferences=normalizePreferences({...preferences,gender:genderProfile.preference});try{localStorage.setItem('forme-gender-profile',genderProfile.id);}catch{}}if(profile&&typeof profile.id==='string'&&localStorage.getItem('forme-size-profile')!==profile.id){preferences=normalizePreferences({...preferences,sizing:profile.sizing});try{localStorage.setItem('forme-size-profile',profile.id);}catch{}}else if(profile&&!preferences.sizing.groups){preferences=normalizePreferences({...preferences,sizing:groupedSizing(preferences.sizing,profile.sizing?.groups?.clothing??[])});}}}catch{}
-    if(!controller.signal.aborted){setData(preferences);setReady(true);}}
-    void load();return()=>controller.abort();},[]);
-  useEffect(()=>{if(ready)try{localStorage.setItem('forme-v2',JSON.stringify(data));}catch{setStorageError('Browser storage is unavailable. Your changes will last for this session only.');}},[data,ready]);
-  useEffect(()=>{if(ready&&needsSetup&&pathname!=='/welcome')router.replace('/welcome');},[ready,needsSetup,pathname,router]);
-  useEffect(()=>{setModal(null);setMenu(false);setStyleMenu(false);setRefreshOpen(false);setFormError('');},[pathname]);
-  useEffect(()=>{if(!menu)return;const close=(event:KeyboardEvent)=>{if(event.key==='Escape')setMenu(false);};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close);},[menu]);
-  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(''),3000);return()=>clearTimeout(timer);},[toast]);
-  function toggleSidebar(){const next=!collapsed;setCollapsed(next);try{localStorage.setItem('forme-sidebar',next?'collapsed':'expanded');}catch{}}
-  function restoreSettings(backup:Backup){
-    const writes:Record<string,string>={'forme-v2':JSON.stringify(backup.settings),'forme-saved-listings':JSON.stringify(backup.savedListings),'forme-data-mode':backup.display.mode,'forme-sidebar':backup.display.collapsed?'collapsed':'expanded'};
-    const previous:Record<string,string|null>={};
-    try{for(const key of Object.keys(writes))previous[key]=localStorage.getItem(key);for(const [key,value] of Object.entries(writes))localStorage.setItem(key,value);}catch{for(const [key,value] of Object.entries(previous)){try{if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}catch{}}throw new Error('Browser storage could not save the import. Your active settings were not changed.');}
-    setFeedbackUndo(null);setData(backup.settings);setSavedListings(backup.savedListings);setMode(backup.display.mode);setCollapsed(backup.display.collapsed);setStorageError('');
+  useEffect(() => {
+    try {
+      setMode(localStorage.getItem("forme-data-mode") === "demo" ? "demo" : "live");
+      setSavedListings(JSON.parse(localStorage.getItem("forme-saved-listings") ?? "[]"));
+    } catch {}
+    const controller = new AbortController();
+    loadListings(controller.signal)
+      .then(setSnapshot)
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setFeedError(error.message ?? "Live listings could not be loaded. Please try again.");
+      });
+    return () => controller.abort();
+  }, []);
+  async function reloadListings() {
+    setSnapshot(await loadListings());
+    setFeedError("");
   }
-  // Account sync keeps this browser's display choices (sidebar, demo/live); only preferences and saved items travel.
-  const sync=useProfileSync({data,savedListings,ready,mode,collapsed,apply:backup=>restoreSettings({...backup,display:{mode,collapsed}}),notify:setToast});
-  const update=(patch:Partial<Preferences>)=>setData(previous=>({...previous,...patch}));
-  const open=(value:Modal)=>{setFormError('');setModal(value);};
-  function dismiss(item:Listing){
-    const key=listingKey(item);
-    setData(previous=>({...previous,dismissed:[...previous.dismissed.filter(value=>value!==key),key].slice(-1000),tasteFeedback:[...(previous.tasteFeedback??[]).filter(row=>row.key!==key),feedbackSnapshot(item)].slice(-200)}));
-    setToast('');setFeedbackUndo({kind:'piece',key});
-  }
-  function restorePiece(key:string){
-    setData(previous=>({...previous,dismissed:previous.dismissed.filter(value=>value!==key)}));
-    setFeedbackUndo(null);setToast('Piece restored');
-  }
-  function undoFeedback(){
-    if(feedbackUndo?.kind==='piece')restorePiece(feedbackUndo.key);
-    if(feedbackUndo?.kind==='brand'){
-      const {brand,previous:state}=feedbackUndo;
-      setBrand(brand,state);setFeedbackUndo(null);
+  async function retryListings() {
+    setRetrying(true);
+    try {
+      await reloadListings();
+    } catch (error) {
+      setFeedError((error as Error).message);
+    } finally {
+      setRetrying(false);
     }
   }
-  function excludeBrand(brand:string){
-    const previous=brandState(brand);
-    setBrand(brand,'Excluded');setToast('');
-    setFeedbackUndo({kind:'brand',brand,previous});setModal(null);
+  function switchMode(value: "live" | "demo") {
+    setMode(value);
+    try {
+      localStorage.setItem("forme-data-mode", value);
+    } catch {}
+  }
+  const [collapsed, setCollapsed] = useState(false),
+    [styleMenu, setStyleMenu] = useState(false);
+  const [modal, setModal] = useState<Modal | null>(null),
+    [toast, setToast] = useState(""),
+    [brandQuery, setBrandQuery] = useState(""),
+    [brandTab, setBrandTab] = useState("All"),
+    [menu, setMenu] = useState(false),
+    [formError, setFormError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      let preferences = initialPreferences;
+      try {
+        const raw = localStorage.getItem("forme-v2") ?? localStorage.getItem("forme-v1");
+        if (raw) {
+          preferences = normalizePreferences(JSON.parse(raw));
+          if (
+            localStorage.getItem("forme-onboarding-pending") === "1" &&
+            localStorage.getItem("forme-onboarding-complete") !== "1"
+          )
+            setNeedsSetup(true);
+        } else if (localStorage.getItem("forme-onboarding-complete") !== "1") {
+          localStorage.setItem("forme-onboarding-pending", "1");
+          preferences = normalizePreferences({
+            ...initialPreferences,
+            following: [],
+            excluded: [],
+            styles: [],
+            searches: [],
+            saved: [],
+          });
+          setNeedsSetup(true);
+        }
+        setCollapsed(localStorage.getItem("forme-sidebar") === "collapsed");
+      } catch {
+        setStorageError(
+          "Saved preferences could not be read. This session starts with the sample preferences.",
+        );
+      }
+      try {
+        const response = await fetch("/api/size-profile", {
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(2000)]),
+          cache: "no-store",
+        });
+        if (response.ok) {
+          const { profile, genderProfile } = await response.json();
+          if (
+            genderProfile &&
+            typeof genderProfile.id === "string" &&
+            localStorage.getItem("forme-gender-profile") !== genderProfile.id
+          ) {
+            preferences = normalizePreferences({
+              ...preferences,
+              gender: genderProfile.preference,
+            });
+            try {
+              localStorage.setItem("forme-gender-profile", genderProfile.id);
+            } catch {}
+          }
+          if (
+            profile &&
+            typeof profile.id === "string" &&
+            localStorage.getItem("forme-size-profile") !== profile.id
+          ) {
+            preferences = normalizePreferences({
+              ...preferences,
+              sizing: profile.sizing,
+            });
+            try {
+              localStorage.setItem("forme-size-profile", profile.id);
+            } catch {}
+          } else if (profile && !preferences.sizing.groups) {
+            preferences = normalizePreferences({
+              ...preferences,
+              sizing: groupedSizing(preferences.sizing, profile.sizing?.groups?.clothing ?? []),
+            });
+          }
+        }
+      } catch {}
+      if (!controller.signal.aborted) {
+        setData(preferences);
+        setReady(true);
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    if (ready)
+      try {
+        localStorage.setItem("forme-v2", JSON.stringify(data));
+      } catch {
+        setStorageError(
+          "Browser storage is unavailable. Your changes will last for this session only.",
+        );
+      }
+  }, [data, ready]);
+  useEffect(() => {
+    if (ready && needsSetup && pathname !== "/welcome") router.replace("/welcome");
+  }, [ready, needsSetup, pathname, router]);
+  useEffect(() => {
+    setModal(null);
+    setMenu(false);
+    setStyleMenu(false);
+    setRefreshOpen(false);
+    setFormError("");
+  }, [pathname]);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(false);
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [menu]);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(""), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+  function toggleSidebar() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem("forme-sidebar", next ? "collapsed" : "expanded");
+    } catch {}
+  }
+  function restoreSettings(backup: Backup) {
+    const writes: Record<string, string> = {
+      "forme-v2": JSON.stringify(backup.settings),
+      "forme-saved-listings": JSON.stringify(backup.savedListings),
+      "forme-data-mode": backup.display.mode,
+      "forme-sidebar": backup.display.collapsed ? "collapsed" : "expanded",
+    };
+    const previous: Record<string, string | null> = {};
+    try {
+      for (const key of Object.keys(writes)) previous[key] = localStorage.getItem(key);
+      for (const [key, value] of Object.entries(writes)) localStorage.setItem(key, value);
+    } catch {
+      for (const [key, value] of Object.entries(previous)) {
+        try {
+          if (value === null) localStorage.removeItem(key);
+          else localStorage.setItem(key, value);
+        } catch {}
+      }
+      throw new Error(
+        "Browser storage could not save the import. Your active settings were not changed.",
+      );
+    }
+    setFeedbackUndo(null);
+    setData(backup.settings);
+    setSavedListings(backup.savedListings);
+    setMode(backup.display.mode);
+    setCollapsed(backup.display.collapsed);
+    setStorageError("");
+  }
+  // Account sync keeps this browser's display choices (sidebar, demo/live); only preferences and saved items travel.
+  const sync = useProfileSync({
+    data,
+    savedListings,
+    ready,
+    mode,
+    collapsed,
+    apply: (backup) => restoreSettings({ ...backup, display: { mode, collapsed } }),
+    notify: setToast,
+  });
+  const update = (patch: Partial<Preferences>) =>
+    setData((previous) => ({ ...previous, ...patch }));
+  const open = (value: Modal) => {
+    setFormError("");
+    setModal(value);
+  };
+  function dismiss(item: Listing) {
+    const key = listingKey(item);
+    const eventId = learning.record(key, "dismiss", item, "unspecified");
+    setData((previous) => ({
+      ...previous,
+      dismissed: [...previous.dismissed.filter((value) => value !== key), key].slice(-1000),
+      tasteFeedback: [
+        ...(previous.tasteFeedback ?? []).filter((row) => row.key !== key),
+        {
+          ...feedbackSnapshot(item),
+          reason: "unspecified" as const,
+          ...(eventId ? { feedbackEventId: eventId } : {}),
+        },
+      ].slice(-200),
+    }));
+    setToast("");
+    setFeedbackUndo({ kind: "piece", key });
+  }
+  function restorePiece(key: string) {
+    learning.record(key, "restore");
+    setData((previous) => ({
+      ...previous,
+      dismissed: previous.dismissed.filter((value) => value !== key),
+    }));
+    setFeedbackUndo(null);
+    setToast("Piece restored");
+  }
+  function undoFeedback() {
+    if (feedbackUndo?.kind === "piece") restorePiece(feedbackUndo.key);
+    if (feedbackUndo?.kind === "brand") {
+      const { brand, previous: state } = feedbackUndo;
+      setBrand(brand, state);
+      setFeedbackUndo(null);
+    }
+  }
+  function excludeBrand(brand: string) {
+    const previous = brandState(brand);
+    setBrand(brand, "Excluded");
+    setToast("");
+    setFeedbackUndo({ kind: "brand", brand, previous });
+    setModal(null);
   }
 
-  useListingUpdates(mode==='live',value=>{setSnapshot(value);setFeedError('');});
-  const source:Listing[]=useMemo(()=>mode==='demo'?items:(snapshot?.items.filter(passesListingReview).map(item=>englishListing(item))??[]),[mode,snapshot]);
-  const allListings=useMemo(()=>[...source,...savedListings.filter(passesListingReview).map(item=>englishListing(item)).filter(item=>!source.some(row=>row.id===item.id)&&(mode==='live'?!!item.source:!item.source))],[source,savedListings,mode]);
-  const recommendations=useMemo(()=>recommendListings(source,data,{signals:allListings}),[source,data,allListings]);
-  const recommendationReasons=useMemo(()=>new Map(recommendations.map(entry=>[listingKey(entry.item),entry.reason])),[recommendations]);
-  const genderHidden=source.filter(item=>!matchesGender(item,data.gender)).length;
-  const list=visibleListings(data,source).filter(canBrowse), fresh=list.filter(isNew), followed=list.filter(item=>data.following.some(brand=>sameBrand(brand,item.brand))).sort((a,b)=>a.age-b.age), rare=list.filter(item=>item.rarity>=8).sort((a,b)=>b.rarity-a.rarity);
-  const selectedStyle=params.get('style')??'All';
-  const toggleSave=(id:number)=>{
-    const item=allListings.find(row=>row.id===id);
-    const next=savedListings.filter(row=>row.id!==id);
-    if(!data.saved.includes(id)&&item)next.push(item);
-    setSavedListings(next);try{localStorage.setItem('forme-saved-listings',JSON.stringify(next));}catch{setStorageError('The saved listing could not be stored in this browser.');}
-    setData(previous=>({...previous,saved:previous.saved.includes(id)?previous.saved.filter(value=>value!==id):[...previous.saved,id]}));
+  useListingUpdates(mode === "live", (value) => {
+    setSnapshot(value);
+    setFeedError("");
+  });
+  const source: Listing[] = useMemo(
+    () =>
+      mode === "demo"
+        ? items
+        : (snapshot?.items.filter(passesListingReview).map((item) => englishListing(item)) ?? []),
+    [mode, snapshot],
+  );
+  const allListings = useMemo(
+    () => [
+      ...source,
+      ...savedListings
+        .filter(passesListingReview)
+        .map((item) => englishListing(item))
+        .filter(
+          (item) =>
+            !source.some((row) => row.id === item.id) &&
+            (mode === "live" ? !!item.source : !item.source),
+        ),
+    ],
+    [source, savedListings, mode],
+  );
+  const baselineRecommendations = useMemo(
+    () => recommendListings(source, data, { signals: allListings }),
+    [source, data, allListings],
+  );
+  const learning = useLearning({
+    settings: data,
+    savedListings,
+    items: source,
+    identity:
+      mode === "live" ? (sync.account?.email ?? (sync.state === "off" ? "local" : null)) : null,
+    discover: pathname === "/discover",
+  });
+  const recommendations = useMemo(
+    () =>
+      learning.selectedKeys
+        ? orderEligible(baselineRecommendations, learning.selectedKeys)
+        : baselineRecommendations,
+    [baselineRecommendations, learning.selectedKeys],
+  );
+  function changeReason(key: string, reason: DislikeReason) {
+    const previous = data.tasteFeedback?.find((row) => row.key === key),
+      item = allListings.find((row) => listingKey(row) === key);
+    const eventId = previous?.feedbackEventId;
+    const fresh = eventId
+      ? learning.record(key, "reason", undefined, reason, eventId)
+      : item
+        ? learning.record(key, "dismiss", item, reason)
+        : undefined;
+    setData((value) => ({
+      ...value,
+      tasteFeedback: (value.tasteFeedback ?? []).map((row) =>
+        row.key === key
+          ? { ...row, reason, ...(!eventId && fresh ? { feedbackEventId: fresh } : {}) }
+          : row,
+      ),
+    }));
+    setReasonKey(null);
+    setToast("Reason saved. You can change it in Hidden pieces.");
+  }
+  const recommendationReasons = useMemo(
+    () =>
+      new Map(
+        recommendations.map((entry) => [
+          listingKey(entry.item),
+          { reason: entry.reason, details: entry.details },
+        ]),
+      ),
+    [recommendations],
+  );
+  const genderHidden = source.filter((item) => !matchesGender(item, data.gender)).length;
+  const list = visibleListings(data, source).filter(canBrowse),
+    fresh = list.filter(isNew),
+    followed = list
+      .filter((item) => data.following.some((brand) => sameBrand(brand, item.brand)))
+      .sort((a, b) => a.age - b.age),
+    rare = list.filter((item) => item.rarity >= 8).sort((a, b) => b.rarity - a.rarity);
+  const selectedStyle = params.get("style") ?? "All";
+  const toggleSave = (id: number) => {
+    const item = allListings.find((row) => row.id === id);
+    if (item) learning.record(listingKey(item), data.saved.includes(id) ? "unsave" : "save", item);
+    const next = savedListings.filter((row) => row.id !== id);
+    if (!data.saved.includes(id) && item) next.push(item);
+    setSavedListings(next);
+    try {
+      localStorage.setItem("forme-saved-listings", JSON.stringify(next));
+    } catch {
+      setStorageError("The saved listing could not be stored in this browser.");
+    }
+    setData((previous) => ({
+      ...previous,
+      saved: previous.saved.includes(id)
+        ? previous.saved.filter((value) => value !== id)
+        : [...previous.saved, id],
+    }));
   };
-  const brandState=(brand:string)=>data.excluded.some(value=>sameBrand(value,brand))?'Excluded':data.following.some(value=>sameBrand(value,brand))?'Following':'Neutral';
-  function setBrand(brand:string,state:string) {setFeedbackUndo(null);setData(previous=>({...previous,following:[...previous.following.filter(value=>!sameBrand(value,brand)),...(state==='Following'?[brand]:[])],excluded:[...previous.excluded.filter(value=>!sameBrand(value,brand)),...(state==='Excluded'?[brand]:[])]}));setToast(`${brand} · ${state}`);}
-  function addSuggestion(name:string) {update({styles:[...data.styles,name],styleRules:{...data.styleRules,[name]:suggestionRules[name]}});setToast(`${name} added to My Styles`);}
-  const searchId=pathname.startsWith('/searches/')?Number(pathname.split('/')[2]):null;
-  const activeSearch=data.searches.find(search=>search.id===searchId);
-  const activeItem=pathname.startsWith('/items/')?allListings.find(item=>item.id===Number(pathname.split('/')[2])):undefined;
-  const freshnessStatus=mode==='live'&&snapshot?<FeedFreshness snapshot={snapshot} refresh={typeof window!=='undefined'&&window.location.hostname==='127.0.0.1'?()=>setRefreshOpen(true):undefined}/>:null;
+  const brandState = (brand: string) =>
+    data.excluded.some((value) => sameBrand(value, brand))
+      ? "Excluded"
+      : data.following.some((value) => sameBrand(value, brand))
+        ? "Following"
+        : "Neutral";
+  function setBrand(brand: string, state: string) {
+    setFeedbackUndo(null);
+    setData((previous) => ({
+      ...previous,
+      following: [
+        ...previous.following.filter((value) => !sameBrand(value, brand)),
+        ...(state === "Following" ? [brand] : []),
+      ],
+      excluded: [
+        ...previous.excluded.filter((value) => !sameBrand(value, brand)),
+        ...(state === "Excluded" ? [brand] : []),
+      ],
+    }));
+    setToast(`${brand} · ${state}`);
+  }
+  function addSuggestion(name: string) {
+    update({
+      styles: [...data.styles, name],
+      styleRules: { ...data.styleRules, [name]: suggestionRules[name] },
+    });
+    setToast(`${name} added to My Styles`);
+  }
+  const searchId = pathname.startsWith("/searches/") ? Number(pathname.split("/")[2]) : null;
+  const activeSearch = data.searches.find((search) => search.id === searchId);
+  const activeItem = pathname.startsWith("/items/")
+    ? allListings.find((item) => item.id === Number(pathname.split("/")[2]))
+    : undefined;
+  const freshnessStatus =
+    mode === "live" && snapshot ? (
+      <FeedFreshness
+        snapshot={snapshot}
+        refresh={
+          typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
+            ? () => setRefreshOpen(true)
+            : undefined
+        }
+      />
+    ) : null;
   let content: React.ReactNode;
-  if(pathname==='/') {
-    const activity=homeActivity(list,data,Date.now(),{signals:allListings});
-    const searchUpdates=data.searches.map(search=>({search,hits:searchListings(mode==='live'?list:fresh,search)}));
-    content=<><Header title="Home" description={mode==='live'?"New finds and price changes from your collection.":"The latest from your brands and searches."}/>{mode==='live'?<><section className="feed-section"><div className="sectionhead"><div><h2>New to FORME</h2><p className="small">Newly found for your edit in the last 7 days.</p></div><Link className="textlink" href="/discover">Explore Discover →</Link></div>{activity.arrivals.length?<Grid values={activity.arrivals.slice(0,4)}/>:<div className="quiet-empty home-caught-up"><div><strong>You’re up to date</strong><p>New finds matching your preferences will appear here.</p></div><Link className="btn light" href={data.following.length?'/following':'/brands'}>{data.following.length?'Browse your brands':'Choose your brands'}</Link></div>}</section><section className="feed-section"><div className="sectionhead"><div><h2>Price changes</h2><p className="small">Observed changes in the last 7 days, with saved pieces first.</p></div></div>{activity.changes.length?<Grid values={activity.changes.slice(0,8)}/>:<p className="quiet-empty">No observed price changes yet. Save pieces you like to keep them close.</p>}</section></>:<Section title="New from your brands" description={`${followed.filter(isNew).length} new pieces from brands you follow`} href="/following" values={followed.filter(isNew)}/>}<section className="feed-section"><div className="sectionhead"><h2>Your search updates</h2><Link className="textlink" href="/searches">All searches →</Link></div><div className="search-updates">{searchUpdates.map(({search,hits})=><Link key={search.id} className="search-update" href={`/searches/${search.id}`}><Search/><div><strong>{search.name}</strong><p>{hits.length?`${hits.length} ${mode==='demo'?'new ':''}${hits.length===1?'match':'matches'}`:'No current matches'}</p></div><ChevronRight/></Link>)}</div>{!searchUpdates.length&&<Empty><Link href="/searches">Create a saved search →</Link></Empty>}</section></>;
-  } else if(pathname==='/discover') {
-    const validStyle=selectedStyle==='All'||data.styles.includes(selectedStyle);
-    const pool=mode==='live'?recommendations.map(entry=>entry.item):list;
-    const feed=selectedStyle==='All'?pool:validStyle?pool.filter(item=>matchesStyle(item,selectedStyle,data)):[];
-    content=<><Header title="Discover" description={mode==='live'?"Shaped by your styles, brands and saved pieces. Save pieces or choose Not for me to refine your edit.":"Explore illustrative pieces by style."}/><div className="toolbar style-filterbar" aria-label="Style filters"><div className="style-filter-options">{['All',...data.styles.filter(style=>mode==='demo'||pool.some(item=>matchesStyle(item,style,data)))].map(style=><Link key={style} className={`chip ${selectedStyle===style?'active':''}`} aria-current={selectedStyle===style?'page':undefined} href={style==='All'?'/discover':`/discover?style=${encodeURIComponent(style)}`}>{style}</Link>)}</div><button className="icon-button filter-settings" aria-label="Edit style filters" title="Edit style filters" onClick={()=>setStyleMenu(true)}><SlidersHorizontal/></button></div>{!validStyle&&<div className="notice">This style is no longer in My Styles. <Link href="/discover">Explore all pieces →</Link></div>}<div className="feed-meta"><span>{feed.length} {feed.length===1?'piece':'pieces'}</span>{mode==='live'&&!pool.some(item=>item.style)&&<Link className="textlink" href="/styles">Style preferences</Link>}</div>{mode==='live'&&!pool.length?<Empty title={data.following.length?'No discoveries that match yet':'Start with a few favorite brands'} action={<><Link className="btn" href="/brands">{data.following.length?'Review your brands':'Choose your brands'}</Link><Link className="btn light" href="/settings">Review preferences</Link></>}>{data.following.length?'We’ll show relevant pieces beyond your followed brands when they’re available in the collection.':'Your followed brands give Discover a starting point. You can add or change them any time.'}</Empty>:<Grid values={feed}/>}</>;
-  } else if(pathname==='/following') content=<><Header title="Following" description="Keep up with the brands you already love."><Link className="btn light" href="/brands">Manage brands</Link></Header><div className="feed-meta">{data.following.length} followed brands · {followed.length} matching pieces</div>{followed.length?<Grid values={followed}/>:<Empty title={data.following.length?'No pieces from your brands right now':'Follow your favorites'} action={<><Link className="btn" href="/brands">{data.following.length?'Review brands':'Find brands to follow'}</Link>{data.following.length>0&&<Link className="btn light" href="/settings">Review preferences</Link>}</>}>{data.following.length?'Your brands are still followed. Try reviewing your preferences or explore Discover.':'Build your own feed by following the brands you want to keep up with.'}</Empty>}</>;
-  else if(pathname==='/rare') content=<><Header title="Rare Finds" description="Archive silhouettes and standout pieces worth a closer look."/><div className="notice">{mode==='live'?'Live rarity classification is not available yet.': 'Rarity scores are illustrative, manually assigned to sample listings. They do not represent verified market scarcity.'}</div><Grid values={rare}/></>;
-  else if(pathname==='/saved') {const saved=visibleListings(data,allListings).filter(item=>data.saved.includes(item.id));content=<><Header title="Saved Items" description="Keep the pieces you want to come back to."/><div className="feed-meta">{saved.length} saved {saved.length===1?'piece':'pieces'}{data.saved.length>saved.length?` · ${data.saved.length-saved.length} hidden or outside this collection`:''}</div>{saved.length?<Grid values={saved}/>:<Empty title={data.saved.length?'Your saved pieces are still saved':'A place for your next finds'} action={<Link className="btn" href={data.saved.length?'/settings':'/discover'}>{data.saved.length?'Review preferences':'Explore Discover'}</Link>}>{data.saved.length?'Your current preferences or collection hide these pieces. Changing a filter will not remove them.':'Tap the heart on any piece to save it here.'}</Empty>}</>;}
-  else if(pathname==='/drops') {const digest=digestListings(data,source);content=<><Header title="Daily digest" description="Your delivery preview: today’s matches from the sources you choose."><Link className="btn light" href="/tools?preview=digest#experiments">Digest settings</Link></Header><div className="digest-summary"><Mail/><div><strong>{digest.length} new pieces in one daily summary</strong><p>Combines followed brands, saved searches and styles enabled in Settings. Items may also appear in your feeds.</p><p className="small">Delivery preview · {data.digestTime} · Scheduled delivery is not connected</p></div></div><Grid values={digest}/></>;}
-  else if(pathname==='/searches') content=<><Header title="Saved Searches" description="Matching pieces from the searches you’ve saved."><button className="btn" onClick={()=>open({kind:'search'})}><Plus/> New search</button></Header>{data.searches.map(search=><ProductRail key={search.id} search={search} values={searchListings(list,search).sort((a,b)=>a.age-b.age)}/>)}{!data.searches.length&&<Empty title="Keep a good search going" action={<button className="btn light" onClick={()=>open({kind:'search'})}>Create your first search</button>}>Save keywords, a brand or a price limit and check matching pieces here.</Empty>}</>;
-  else if(activeSearch) {const matches=searchListings(list,activeSearch);content=<><Link className="backlink" href="/searches">← All saved searches</Link><Header title={activeSearch.name} description={`${matches.length} matching pieces · ${matches.filter(isNew).length} ${mode==='live'?'new this week':'new today'}`}><button className="btn light" onClick={()=>open({kind:'search',id:activeSearch.id})}>Edit search</button></Header><Grid values={matches.sort((a,b)=>a.age-b.age)}/></>;}
-  else if(pathname==='/styles') content=<><Header title="My Styles" description="Keep the styles you want your edit to reflect."><button className="btn" onClick={()=>open({kind:'style'})}>+ Create style</button></Header>{mode==='live'&&!source.some(item=>item.style)&&<p className="section-note">Your style preferences are saved. Style filters appear in Discover when matching pieces are classified.</p>}<div className="cards">{data.styles.map(style=><div className="tile" key={style}><strong>{style}</strong><p>{list.filter(item=>matchesStyle(item,style,data)).length} matching pieces · {(data.styleRules[style]??suggestionRules[style]??[style]).join(', ')}</p><div className="inline style-actions">{mode==='demo'||list.some(item=>matchesStyle(item,style,data))?<Link className="btn light" href={`/discover?style=${encodeURIComponent(style)}`}>View feed</Link>:<span className="small">No classified matches yet</span>}<button className="btn light" onClick={()=>open({kind:'style',name:style})}>Edit</button><button className="textbutton" aria-label={`Remove ${style}`} onClick={()=>{update({styles:data.styles.filter(value=>value!==style)});setToast(`${style} removed`);}}>Remove</button></div></div>)}</div>{!data.styles.length&&<Empty>Create a style or add a suggestion below to personalize Discover.</Empty>}<Suggestions/></>;
-  else if(pathname==='/brands') {const brands=[...new Set([...catalog,...data.following,...data.excluded,...source.map(item=>item.brand)])].sort().filter(brand=>brand.toLowerCase().includes(brandQuery.toLowerCase().trim())&&(brandTab==='All'||brandState(brand)===brandTab));content=<><Header title="Your brands" description="Follow what you love. Exclude what you don’t. Leave room to discover."/><div className="panel"><label className="search-label" htmlFor="brand-search">Find a brand</label><input id="brand-search" type="search" autoComplete="off" placeholder="Start typing: Our Legacy, COS, Acne…" value={brandQuery} onChange={event=>setBrandQuery(event.target.value)}/><p className="small brand-help">Following appears in your dedicated feed. Excluded disappears from every feed. Neutral stays available in Discover.</p></div><div className="toolbar">{['All','Following','Neutral','Excluded'].map(tab=><button key={tab} className={`chip ${brandTab===tab?'active':''}`} aria-pressed={brandTab===tab} onClick={()=>setBrandTab(tab)}>{tab}</button>)}</div><div className="panel">{brands.map(brand=><div className="brandrow" key={brand}><div><strong>{brand}</strong> <span className={`state ${brandState(brand)==='Following'?'follow':brandState(brand)==='Excluded'?'exclude':''}`}>{brandState(brand)}</span></div><div className="actions" role="group" aria-label={`${brand} preference`}>{['Following','Neutral','Excluded'].map(state=><button key={state} className={brandState(brand)===state?'on':''} aria-pressed={brandState(brand)===state} onClick={()=>setBrand(brand,state)}>{state==='Following'?'Follow':state==='Excluded'?'Exclude':'Neutral'}</button>)}</div></div>)}{!brands.length&&<Empty title="No brands match this search" action={brandQuery.trim()&&brandQuery.trim().length<=100?<button className="btn light" onClick={()=>{setBrand(brandQuery.trim(),'Following');setBrandTab('Following');}}>Follow {brandQuery.trim()}</button>:<button className="btn light" onClick={()=>{setBrandQuery('');setBrandTab('All');}}>Show all brands</button>}>Try another name, or add the brand to your follows. Listings may not be available for every brand yet.</Empty>}</div></>;}
-  else if(pathname==='/settings') content=<><Header title="Settings" description="Make your edit feel more like you."/><AccountPanel sync={sync}/><div className="settings-links"><Link className="tile" href="/brands"><Tags/><strong>Your brands</strong><p>{data.following.length} followed · {data.excluded.length} excluded</p><ChevronRight/></Link><Link className="tile" href="/styles"><SlidersHorizontal/><strong>My Styles</strong><p>{data.styles.length} saved style preferences</p><ChevronRight/></Link></div><section className="panel"><h3>Shopping filters</h3><p>Manage departments and sizes together using My sizes in the top navigation.</p></section><HiddenPieces keys={data.dismissed} source={allListings} restore={restorePiece}/><section className="panel"><h3>Your preferences</h3><p>Changes save automatically in this browser. Export a backup to keep a copy or move to another browser.</p><Link className="textlink" href="/welcome">Revisit setup →</Link></section><SettingsTransfer settings={data} display={{mode,collapsed}} savedListings={savedListings} restore={restoreSettings}/><section className="panel settings-advanced"><h3>More options</h3><Link className="settings-row" href="/tools"><span><strong>Collection tools</strong><small>Refresh listings, budgets and recommendation review</small></span><ChevronRight/></Link><button className="textbutton danger" onClick={()=>open({kind:'reset'})}>Reset preferences</button></section></>;
-  else if(pathname==='/tools') content=<><Link className="backlink" href="/settings">← Settings</Link><Header title="Collection tools" description="Refresh your edit and manage collection settings."/>{mode==='live'&&<RefreshControls settings={data} savedListings={savedListings} refreshed={reloadListings}/>}<section className="panel"><h3>Listing source</h3><div className="data-status"><label>Listings <select aria-label="Listing data" value={mode} onChange={event=>switchMode(event.target.value as 'live'|'demo')}><option value="live">Vinted</option><option value="demo">Demo</option></select></label><span>{mode==='demo'?'Illustrative sample listings':snapshot?`${snapshot.items.length} listings · Updated ${new Date(snapshot.fetchedAt).toLocaleString()}`:'No collection loaded'}</span></div>{snapshot&&<details><summary>Listing coverage</summary><p>{snapshot.collection?`${snapshot.collection.collectedQueries} of ${snapshot.collection.plannedQueries} planned queries collected.`:`${snapshot.queries.length} searches collected.`} Up to 20 results per query.</p><p>{genderHidden} items hidden by department preferences. Style and rarity classification are incomplete.</p></details>}</section>{mode==='live'&&snapshot&&<details className="tools-disclosure"><summary>Data quality</summary><DataQuality snapshot={snapshot}/></details>}<details className="tools-disclosure" id="feedback"><summary>Recommendation feedback</summary><div><FeedbackReview source={allListings} settings={data} restore={restorePiece}/></div></details><details className="tools-disclosure"><summary>Local settings backup</summary><LocalProfile settings={data} display={{mode,collapsed}} savedListings={savedListings} restore={restoreSettings}/></details><details className="tools-disclosure" id="experiments" open={params.get('preview')==='digest'}><summary>Experimental previews</summary><p>These previews aren’t part of the main shopping experience. Scheduled delivery and live rarity classification are not connected.</p><div className="inline section-note"><Link className="btn light" href="/rare">Rare Finds preview</Link><Link className="btn light" href="/drops">Daily digest preview</Link></div><div className="panel"><h3>Daily digest</h3>{([['following','New pieces from followed brands'],['searches','New matches from enabled saved searches'],['rare','New potential rare finds'],['styles','New pieces matching My Styles']] as const).map(([key,label])=><label className="checkline" key={key}><input type="checkbox" checked={data.digest[key]} onChange={event=>update({digest:{...data.digest,[key]:event.target.checked}})}/>{label}</label>)}<div className="field"><label htmlFor="digest-time">Preferred delivery time (future integration)</label><input id="digest-time" type="time" value={data.digestTime} onChange={event=>{if(event.target.value)update({digestTime:event.target.value});}}/></div><div className="notice">This changes your Daily Drops preview. No emails, push notifications or scheduled jobs are sent.</div><Link className="textlink" href="/drops">Preview your daily digest →</Link></div></details></>;
-  else if(activeItem) content=<><button className="backlink textbutton" onClick={()=>{if(window.history.state?.idx||window.history.length>1)router.back();else router.push('/discover');}}>← Back to browsing</button><div className="detail"><div className="photo"><ProductPhoto src={photo(activeItem)} sourceUrl={activeItem.source?activeItem.sourceUrl:undefined} alt={activeItem.source?activeItem.title:`Illustrative ${activeItem.title}`}/></div><div><span className="eyebrow">{activeItem.source?<>Vinted · Observed {freshness(activeItem).at?<time dateTime={freshness(activeItem).at!}>{new Date(freshness(activeItem).at!).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</time>:'at an unknown time'}</>:isNew(activeItem)?'New today':`Added ${activeItem.age} days ago · Sample listing`}</span><h1>{activeItem.brand}</h1><h2>{activeItem.title}</h2>{activeItem.source&&(activeItem.titleTranslation==='pending'||(!!activeItem.originalTitle&&activeItem.originalTitle!==activeItem.title))&&<p className="translation-note">{activeItem.titleTranslation==='pending'?'English title not available yet. Showing the original.':'English title from a cached translation. Wording may differ from the original.'}</p>}{activeItem.source&&!!activeItem.originalTitle&&(activeItem.originalTitle!==activeItem.title||(!!activeItem.originalCondition&&activeItem.originalCondition!==activeItem.condition))&&<details className="original-listing"><summary>Show original listing text</summary><p>{activeItem.originalTitle}</p><p>Condition: {activeItem.originalCondition}</p></details>}<dl className="facts"><div><dt>Size</dt><dd>{activeItem.size}</dd></div><div><dt>Condition</dt><dd>{activeItem.condition??(activeItem.source?'Condition not provided':'Very good condition')}</dd></div>{!!activeItem.category&&<div><dt>Category</dt><dd>{activeItem.category}</dd></div>}</dl>{!activeItem.source&&<p className="detail-style">{activeItem.style} · Illustrative rarity {activeItem.rarity}/10</p>}<div className="detail-price">{money(activeItem.price,activeItem.currency)}</div><div className="detail-actions"><button className="btn" onClick={()=>toggleSave(activeItem.id)}>{data.saved.includes(activeItem.id)?'♥ Saved — remove':'♡ Save item'}</button><ListingFeedback item={activeItem} showStatus hidden={data.dismissed.includes(listingKey(activeItem))} dismiss={()=>dismiss(activeItem)} restore={()=>restorePiece(listingKey(activeItem))}/></div><div className="brand-pref"><span className="brand-pref-label" id="brand-pref-label">{activeItem.brand}</span><div className="segmented" role="group" aria-labelledby="brand-pref-label">{['Following','Neutral','Excluded'].map(state=><button key={state} className={brandState(activeItem.brand)===state?'on':''} aria-pressed={brandState(activeItem.brand)===state} aria-label={state==='Following'?'Follow brand':state==='Excluded'?'Exclude brand':'Neutral'} onClick={()=>state==='Excluded'?open({kind:'exclude-brand',brand:activeItem.brand}):setBrand(activeItem.brand,state)}>{state==='Following'?'Follow':state==='Excluded'?'Exclude':'Neutral'}</button>)}</div>{data.excluded.some(brand=>sameBrand(brand,activeItem.brand))&&<p className="brand-pref-note">Hidden from every feed. Change this any time in <Link href="/brands">Your brands</Link>.</p>}</div>{activeItem.sourceUrl?<div className="notice"><a className="btn" href={activeItem.sourceUrl} target="_blank" rel="noopener noreferrer">View on Vinted ↗</a><p>{availability(activeItem).label}. {freshness(activeItem).state==='stale'?'This listing has not been observed in over 7 days. ':''}Price is the last observed item price; delivery and buyer fees are not included. Check the original listing before buying.</p><p className="small">Brand and condition are marketplace labels, not independently authenticated. A search result or missing result does not confirm current availability.</p></div>:<div className="notice">Illustrative product photo and fictional listing. Live availability, checkout and Vinted links will appear when a marketplace integration is connected.</div>}{activeItem.source&&<section className="about" aria-labelledby="about-title"><h3 id="about-title">About this listing</h3><dl><div><dt>Department</dt><dd><span className="v">{({men:'Men',women:'Women',unisex:'Unisex',unknown:'Not specified'} as Record<string,string>)[listingGender(activeItem).gender]??'Not specified'}</span><span className="s">{listingGender(activeItem).genderSource==='title'?'Stated in the listing title':listingGender(activeItem).genderSource==='provider'?'From the listing label':listingGender(activeItem).genderSource==='search-filter'?'Collected from the Men’s catalog (search scope)':'Not provided by the listing'}</span></dd></div><div><dt>Category</dt><dd><span className="v">{classifyListing(activeItem).categorySource==='unknown'?'Not classified':classifyListing(activeItem).productGroup.charAt(0).toUpperCase()+classifyListing(activeItem).productGroup.slice(1)}</span>{classifyListing(activeItem).categorySource!=='unknown'&&<span className="s">Inferred from listing text</span>}</dd></div>{!!activeItem.style&&<div><dt>Style</dt><dd><span className="v">{activeItem.style}</span><span className="s">Inferred from {activeItem.styleSource==='title'?`listing text (“${activeItem.styleEvidence}”)`:'a FORME brand reference'}, not a marketplace label</span></dd></div>}{!!activeItem.collectibleSignals?.length&&<div><dt>Mentions</dt><dd><span className="v">{activeItem.collectibleSignals.join(', ')}</span><span className="s">Found in the listing text. Not a verified scarcity rating</span></dd></div>}</dl></section>}</div></div></>;
-  else content=<><Header title="This piece or page isn’t available." description="The link may be old, or the item may no longer be in your collection."/><Link className="btn" href="/">Return Home</Link></>;
+  if (pathname === "/") {
+    content = (
+      <HomePage
+        data={data}
+        mode={mode}
+        list={list}
+        allListings={allListings}
+        followed={followed}
+        fresh={fresh}
+      />
+    );
+  } else if (pathname === "/discover") {
+    content = (
+      <DiscoverPage
+        data={data}
+        mode={mode}
+        recommendations={recommendations}
+        list={list}
+        selectedStyle={selectedStyle}
+        activeEngine={learning.selectedName}
+        setStyleMenu={setStyleMenu}
+      />
+    );
+  } else if (pathname === "/following")
+    content = (
+      <>
+        <Header title="Following" description="Keep up with the brands you already love.">
+          <Link className="btn light" href="/brands">
+            Manage brands
+          </Link>
+        </Header>
+        <div className="feed-meta">
+          {data.following.length} followed brands · {followed.length} matching pieces
+        </div>
+        {followed.length ? (
+          <Grid values={followed} />
+        ) : (
+          <Empty
+            title={
+              data.following.length
+                ? "No pieces from your brands right now"
+                : "Follow your favorites"
+            }
+            action={
+              <>
+                <Link className="btn" href="/brands">
+                  {data.following.length ? "Review brands" : "Find brands to follow"}
+                </Link>
+                {data.following.length > 0 && (
+                  <Link className="btn light" href="/settings">
+                    Review preferences
+                  </Link>
+                )}
+              </>
+            }
+          >
+            {data.following.length
+              ? "Your brands are still followed. Try reviewing your preferences or explore Discover."
+              : "Build your own feed by following the brands you want to keep up with."}
+          </Empty>
+        )}
+      </>
+    );
+  else if (pathname === "/rare")
+    content = (
+      <>
+        <Header
+          title="Rare Finds"
+          description="Archive silhouettes and standout pieces worth a closer look."
+        />
+        <div className="notice">
+          {mode === "live"
+            ? "Live rarity classification is not available yet."
+            : "Rarity scores are illustrative, manually assigned to sample listings. They do not represent verified market scarcity."}
+        </div>
+        <Grid values={rare} />
+      </>
+    );
+  else if (pathname === "/saved") {
+    const saved = visibleListings(data, allListings).filter((item) => data.saved.includes(item.id));
+    content = (
+      <>
+        <Header title="Saved Items" description="Keep the pieces you want to come back to." />
+        <div className="feed-meta">
+          {saved.length} saved {saved.length === 1 ? "piece" : "pieces"}
+          {data.saved.length > saved.length
+            ? ` · ${data.saved.length - saved.length} hidden or outside this collection`
+            : ""}
+        </div>
+        {saved.length ? (
+          <Grid values={saved} />
+        ) : (
+          <Empty
+            title={
+              data.saved.length
+                ? "Your saved pieces are still saved"
+                : "A place for your next finds"
+            }
+            action={
+              <Link className="btn" href={data.saved.length ? "/settings" : "/discover"}>
+                {data.saved.length ? "Review preferences" : "Explore Discover"}
+              </Link>
+            }
+          >
+            {data.saved.length
+              ? "Your current preferences or collection hide these pieces. Changing a filter will not remove them."
+              : "Tap the heart on any piece to save it here."}
+          </Empty>
+        )}
+      </>
+    );
+  } else if (pathname === "/drops") {
+    const digest = digestListings(data, source);
+    content = (
+      <>
+        <Header
+          title="Daily digest"
+          description="Your delivery preview: today’s matches from the sources you choose."
+        >
+          <Link className="btn light" href="/tools?preview=digest#experiments">
+            Digest settings
+          </Link>
+        </Header>
+        <div className="digest-summary">
+          <Mail />
+          <div>
+            <strong>{digest.length} new pieces in one daily summary</strong>
+            <p>
+              Combines followed brands, saved searches and styles enabled in Settings. Items may
+              also appear in your feeds.
+            </p>
+            <p className="small">
+              Delivery preview · {data.digestTime} · Scheduled delivery is not connected
+            </p>
+          </div>
+        </div>
+        <Grid values={digest} />
+      </>
+    );
+  } else if (pathname === "/searches")
+    content = (
+      <>
+        <Header
+          title="Saved Searches"
+          description="Matching pieces from the searches you’ve saved."
+        >
+          <button className="btn" onClick={() => open({ kind: "search" })}>
+            <Plus /> New search
+          </button>
+        </Header>
+        {data.searches.map((search) => (
+          <ProductRail
+            key={search.id}
+            search={search}
+            values={searchListings(list, search).sort((a, b) => a.age - b.age)}
+          />
+        ))}
+        {!data.searches.length && (
+          <Empty
+            title="Keep a good search going"
+            action={
+              <button className="btn light" onClick={() => open({ kind: "search" })}>
+                Create your first search
+              </button>
+            }
+          >
+            Save keywords, a brand or a price limit and check matching pieces here.
+          </Empty>
+        )}
+      </>
+    );
+  else if (activeSearch) {
+    const matches = searchListings(list, activeSearch);
+    content = (
+      <>
+        <Link className="backlink" href="/searches">
+          ← All saved searches
+        </Link>
+        <Header
+          title={activeSearch.name}
+          description={`${matches.length} matching pieces · ${matches.filter(isNew).length} ${mode === "live" ? "new this week" : "new today"}`}
+        >
+          <button
+            className="btn light"
+            onClick={() => open({ kind: "search", id: activeSearch.id })}
+          >
+            Edit search
+          </button>
+        </Header>
+        <Grid values={matches.sort((a, b) => a.age - b.age)} />
+      </>
+    );
+  } else if (pathname === "/styles")
+    content = (
+      <StylesPage
+        data={data}
+        mode={mode}
+        source={source}
+        list={list}
+        open={open}
+        update={update}
+        setToast={setToast}
+      />
+    );
+  else if (pathname === "/brands") {
+    content = (
+      <BrandsPage
+        data={data}
+        source={source}
+        brandQuery={brandQuery}
+        setBrandQuery={setBrandQuery}
+        brandTab={brandTab}
+        setBrandTab={setBrandTab}
+        brandState={brandState}
+        setBrand={setBrand}
+      />
+    );
+  } else if (pathname === "/settings")
+    content = (
+      <SettingsPage
+        data={data}
+        allListings={allListings}
+        mode={mode}
+        collapsed={collapsed}
+        savedListings={savedListings}
+        restoreSettings={restoreSettings}
+        restorePiece={restorePiece}
+        sync={sync}
+        editReason={setReasonKey}
+        reset={() => open({ kind: "reset" })}
+      />
+    );
+  else if (pathname === "/tools/learning")
+    content = (
+      <LearningDashboard
+        settings={data}
+        savedListings={savedListings}
+        items={source}
+        identity={
+          mode === "live" ? (sync.account?.email ?? (sync.state === "off" ? "local" : null)) : null
+        }
+        historyCleared={() =>
+          setData((value) => ({
+            ...value,
+            tasteFeedback: (value.tasteFeedback ?? []).map(({ feedbackEventId, ...row }) => row),
+          }))
+        }
+      />
+    );
+  else if (pathname === "/tools/ranking-preview")
+    content =
+      mode === "live" ? (
+        <RankingPreview settings={data} savedListings={savedListings} />
+      ) : (
+        <>
+          <Header
+            title="Ranking preview"
+            description="Choose Vinted under Collection tools to compare existing listings."
+          />
+          <Link href="/tools" className="btn light">
+            Collection tools
+          </Link>
+        </>
+      );
+  else if (pathname === "/tools")
+    content = (
+      <ToolsPage
+        data={data}
+        allListings={allListings}
+        mode={mode}
+        collapsed={collapsed}
+        savedListings={savedListings}
+        restoreSettings={restoreSettings}
+        restorePiece={restorePiece}
+        reloadListings={reloadListings}
+        switchMode={switchMode}
+        snapshot={snapshot}
+        genderHidden={genderHidden}
+        previewDigest={params.get("preview") === "digest"}
+        update={update}
+        editReason={setReasonKey}
+      />
+    );
+  else if (activeItem)
+    content = (
+      <ItemDetail
+        item={activeItem}
+        settings={data}
+        toggleSave={toggleSave}
+        dismiss={dismiss}
+        restorePiece={restorePiece}
+        brandState={brandState}
+        setBrand={setBrand}
+        excludeBrand={(brand) => open({ kind: "exclude-brand", brand })}
+      />
+    );
+  else
+    content = (
+      <>
+        <Header
+          title="This piece or page isn’t available."
+          description="The link may be old, or the item may no longer be in your collection."
+        />
+        <Link className="btn" href="/">
+          Return Home
+        </Link>
+      </>
+    );
 
-  function saveSearch(event:React.FormEvent<HTMLFormElement>) {event.preventDefault();const values=new FormData(event.currentTarget);const name=String(values.get('name')??'').trim();if(!name){setFormError('Enter a search name.');return;}if(!['keyword','brand','size','max'].some(key=>String(values.get(key)??'').trim())){setFormError('Add a keyword, brand, size or price limit to your search.');return;}const id=modal?.kind==='search'?modal.id:undefined;const search:SavedSearch={id:id??Date.now(),name,keyword:String(values.get('keyword')??'').trim(),brand:String(values.get('brand')??'').trim(),size:String(values.get('size')??'').trim(),max:String(values.get('max')??''),alerts:values.get('alerts')==='on'};update({searches:id?data.searches.map(value=>value.id===id?search:value):[...data.searches,search]});setModal(null);router.push(`/searches/${search.id}`);setToast('Search saved');}
-  function saveStyle(event:React.FormEvent<HTMLFormElement>) {event.preventDefault();const values=new FormData(event.currentTarget),name=String(values.get('name')??'').trim(),rules=values.getAll('rules').map(String),old=modal?.kind==='style'?modal.name:undefined;if(!name||!rules.length){setFormError('Give your style a name and select at least one aesthetic.');return;}if(data.styles.some(style=>style!==old&&style.toLowerCase()===name.toLowerCase())){setFormError('You already have a style with that name.');return;}const styleRules={...data.styleRules};if(old)delete styleRules[old];styleRules[name]=rules;update({styles:old?data.styles.map(style=>style===old?name:style):[...data.styles,name],styleRules});setModal(null);setToast('Style saved. Your Discover filters are updated.');}
-  const editSearch=modal?.kind==='search'?data.searches.find(search=>search.id===modal.id):undefined;
-  const editStyle=modal?.kind==='style'?modal.name:undefined;
-  function finishSetup(value:Preferences){setData(normalizePreferences(value));setNeedsSetup(false);try{localStorage.setItem('forme-onboarding-complete','1');localStorage.removeItem('forme-onboarding-pending');}catch{setStorageError('Your setup will last for this session only because browser storage is unavailable.');}router.replace('/discover');}
-  function leaveSetup(){setNeedsSetup(false);try{localStorage.setItem('forme-onboarding-complete','1');localStorage.removeItem('forme-onboarding-pending');}catch{}}
-  const currentNav=nav.find(([path])=>path==='/'?pathname==='/':pathname===path||pathname.startsWith(`${path}/`))??(pathname==='/tools'?nav.find(([path])=>path==='/settings'):undefined);
-  if(!ready)return <div className="loading" aria-live="polite">FORME · Loading your edit…</div>;
-  if(pathname==='/welcome')return <Welcome settings={data} brands={[...new Set(['Our Legacy','Acne Studios','Lemaire','Studio Nicholson','Auralee','Margaret Howell','COS','Arket',...catalog,...source.map(item=>item.brand)])]} sizeLabels={source.map(item=>item.size)} finish={finishSetup} leave={leaveSetup}/>;
-  const isShopping=['/','/discover','/following','/searches','/saved'].includes(pathname)||pathname.startsWith('/searches/');
-  return <FeedContext.Provider value={{data,list,reasons:recommendationReasons,toggleSave,addSuggestion,dismiss,restore:restorePiece,brandPreferences:brand=>open({kind:'exclude-brand',brand})}}><a href="#main-content" className="skip-link">Skip to content</a><div className={`app ${collapsed?'sidebar-collapsed':''}`}><aside className="sidebar"><div className="sidebar-brand"><Link href="/" className="logo" aria-label="FORME Home">{collapsed?'F':'FORME'}</Link><button className="collapse-button icon-button" aria-label={collapsed?'Expand sidebar':'Collapse sidebar'} aria-expanded={!collapsed} onClick={toggleSidebar}>{collapsed?<PanelLeftOpen/>:<PanelLeftClose/>}</button></div><nav className="nav" aria-label="Main navigation">{shoppingNavigation.map(([path,label,Icon])=><Link key={path} href={path} aria-label={label} title={label} className={currentNav?.[0]===path?'active':''} aria-current={currentNav?.[0]===path?'page':undefined}><Icon aria-hidden="true"/><span className="nav-label">{label}</span></Link>)}<span className="nav-section-label">Your edit</span>{preferenceNavigation.map(([path,label,Icon])=><Link key={path} href={path} aria-label={label} title={label} className={currentNav?.[0]===path?'active':''} aria-current={currentNav?.[0]===path?'page':undefined}><Icon aria-hidden="true"/><span className="nav-label">{label}</span></Link>)}</nav></aside><main className="main" id="main-content"><div className="topbar"><Link href="/" className="mobile-wordmark">FORME</Link><div className="topright">{freshnessStatus}<button className={`chip global-filter-trigger ${data.sizing.enabled||data.gender.selected.length<3||!data.gender.includeUnknown?'active':''}`} aria-label="My sizes and departments" aria-haspopup="dialog" aria-expanded={modal?.kind==='sizes'} onClick={()=>open({kind:'sizes'})}><SlidersHorizontal aria-hidden="true"/><span>My sizes</span></button><Link className="chip" href="/saved" aria-label={`Saved items, ${data.saved.length}`}><Heart/> {data.saved.length}</Link></div></div><div className="content">{storageError&&<div className="notice" role="alert">{storageError}</div>}{mode==='demo'&&<div className="demo-indicator" role="status">Demo · illustrative listings <Link href="/tools">Change source</Link></div>}{mode==='live'&&feedError&&<div className="notice error-notice" role="alert"><span>{feedError}</span><button className="btn light" disabled={retrying} onClick={()=>void retryListings()}>{retrying?'Trying again…':'Retry listings'}</button></div>}
-{isShopping&&mode==='live'&&!snapshot&&!feedError?<div className="feed-loading" role="status" aria-label="Loading listings"><h1>Loading your edit</h1><div className="skeleton-grid" aria-hidden="true">{Array.from({length:4},(_,index)=><div className="skeleton-card" key={index}><div/><span/><span/></div>)}</div></div>:content}<footer className="footnote">{mode==='demo'?'Illustrative sample listings and imagery':null}</footer></div></main></div><nav className="mobilebar" aria-label="Mobile navigation">{mobileNavigation.map(([path,label,Icon])=><Link key={path} href={path} aria-label={label} title={label} className={currentNav?.[0]===path?'active':''} aria-current={currentNav?.[0]===path?'page':undefined}><Icon aria-hidden="true"/>{label==='Saved Items'?'Saved':label==='Saved Searches'?'Searches':label}</Link>)}<button className={moreNavigation.some(([path])=>pathname===path)?'active':undefined} onClick={()=>setMenu(!menu)} aria-expanded={menu} aria-controls="more-menu"><Menu aria-hidden="true"/>More</button></nav>{menu&&<div className="more-menu" id="more-menu"><div className="sectionhead"><h2>Your FORME</h2><button className="textbutton" onClick={()=>setMenu(false)} aria-label="Close more menu"><X/></button></div>{moreNavigation.map(([path,label,Icon])=><Link key={path} href={path} onClick={()=>setMenu(false)}><Icon aria-hidden="true"/> {label}</Link>)}</div>}{refreshOpen&&<Dialog title="Find new pieces" className="refresh-modal" close={()=>setRefreshOpen(false)}><RefreshControls compact initialScope={pathname==='/discover'?'discover':pathname==='/following'?'following':'personal'} settings={data} savedListings={savedListings} refreshed={reloadListings} close={()=>setRefreshOpen(false)}/></Dialog>}{styleMenu&&<Dialog title="Your Discover filters" close={()=>setStyleMenu(false)}><p className="style-menu-intro">Edit your style preferences. Styles appear as Discover filters when matching pieces have been classified.</p><div className="style-menu-list">{data.styles.map(style=><div key={style}><span>{style}</span><div><button className="textbutton" onClick={()=>{setStyleMenu(false);open({kind:'style',name:style});}}>Edit<span className="sr-only"> {style}</span></button><button className="icon-button" aria-label={`Remove ${style}`} onClick={()=>update({styles:data.styles.filter(value=>value!==style)})}><X/></button></div></div>)}</div><button className="btn" onClick={()=>{setStyleMenu(false);open({kind:'style'});}}><Plus/> Create style</button></Dialog>}{modal&&<Dialog className={modal.kind==='sizes'?'filter-modal':modal.kind==='exclude-brand'?'brand-feedback-modal':undefined} title={modal.kind==='search'?`${editSearch?'Edit':'Create'} saved search`:modal.kind==='style'?`${editStyle?'Edit':'Create'} style`:modal.kind==='sizes'?'My sizes & departments':modal.kind==='exclude-brand'?`Hide ${modal.brand}?`:'Reset your preferences?'} close={()=>setModal(null)}>{formError&&<p className="form-error" role="alert">{formError}</p>}{modal.kind==='exclude-brand'?<><p>Hide pieces from {modal.brand} across all your feeds.{brandState(modal.brand)==='Following'?' You’ll also stop following this brand.':''} Your saved pieces will stay saved.</p><div className="inline"><button className="btn" onClick={()=>excludeBrand(modal.brand)}>Not interested in {modal.brand}</button><button className="btn light" onClick={()=>setModal(null)}>Cancel</button></div><p className="small section-note">Change this any time in <Link href="/brands" onClick={()=>setModal(null)}>Your brands → Excluded</Link>.</p></>:modal.kind==='sizes'?<GlobalFilters cancel={()=>setModal(null)} settings={data} labels={source.map(item=>item.size).filter(label=>label&&label!=='Not provided')} apply={filters=>{update(filters);setModal(null);setToast('Filters applied to all feeds.');}}/>:modal.kind==='search'?<form onSubmit={saveSearch}><div className="field"><label htmlFor="search-name">Search name</label><input id="search-name" name="name" required maxLength={80} defaultValue={editSearch?.name}/></div><div className="field"><label htmlFor="search-keyword">Keywords (all words must match)</label><input id="search-keyword" name="keyword" defaultValue={editSearch?.keyword} placeholder="e.g. leather jacket"/></div><div className="field"><label htmlFor="search-brand">Brand (optional, exact name)</label><input id="search-brand" name="brand" list="search-brand-catalog" defaultValue={editSearch?.brand}/><datalist id="search-brand-catalog">{catalog.map(brand=><option key={brand} value={brand}/>)}</datalist></div><div className="two"><div className="field"><label htmlFor="search-size">Size (optional)</label><input id="search-size" name="size" defaultValue={editSearch?.size} placeholder="M"/></div><div className="field"><label htmlFor="search-max">Maximum price, SEK</label><input id="search-max" name="max" type="number" min="0" step="1" defaultValue={editSearch?.max} placeholder="2500"/></div></div><input type="hidden" name="alerts" value={editSearch?.alerts?'on':''}/><div className="inline"><button className="btn" type="submit">{editSearch?'Save changes':'Create search'}</button>{editSearch&&<button type="button" className="btn danger" onClick={()=>{update({searches:data.searches.filter(search=>search.id!==editSearch.id)});setModal(null);router.push('/searches');setToast('Search deleted');}}>Delete search</button>}</div></form>:modal.kind==='style'?<form onSubmit={saveStyle}><div className="field"><label htmlFor="style-name">Style name</label><input id="style-name" name="name" required maxLength={50} defaultValue={editStyle} placeholder="e.g. Everyday minimal"/></div><fieldset><legend>Include pieces from these aesthetics</legend>{baseStyles.map(style=><label className="checkline" key={style}><input name="rules" type="checkbox" value={style} defaultChecked={editStyle?(data.styleRules[editStyle]??suggestionRules[editStyle]??[editStyle]).includes(style):false}/>{style}</label>)}</fieldset><button className="btn" type="submit">Save style</button></form>:<><p>Your saved items, searches, brands and styles will return to the sample defaults.</p><div className="inline reset"><button className="btn danger" onClick={()=>{setFeedbackUndo(null);setData(structuredClone(initialPreferences));setModal(null);router.push('/');setToast('Preferences reset');}}>Reset preferences</button><button className="btn light" onClick={()=>setModal(null)}>Keep my preferences</button></div></>}</Dialog>}<div className="toast-stack">{feedbackUndo&&<UndoToast key={feedbackUndo.kind==='piece'?`piece:${feedbackUndo.key}`:`brand:${feedbackUndo.brand}`} message={feedbackUndo.kind==='piece'?'Piece hidden from your feeds.':`${feedbackUndo.brand} hidden from your feeds.`} undoLabel={feedbackUndo.kind==='piece'?'Undo Not for me':'Undo brand exclusion'} onUndo={undoFeedback} onDismiss={()=>setFeedbackUndo(null)}/>}{toast&&<div className="toast" role="status">{toast}</div>}</div></FeedContext.Provider>;
+  function saveSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const name = String(values.get("name") ?? "").trim();
+    if (!name) {
+      setFormError("Enter a search name.");
+      return;
+    }
+    if (!["keyword", "brand", "size", "max"].some((key) => String(values.get(key) ?? "").trim())) {
+      setFormError("Add a keyword, brand, size or price limit to your search.");
+      return;
+    }
+    const id = modal?.kind === "search" ? modal.id : undefined;
+    const search: SavedSearch = {
+      id: id ?? Date.now(),
+      name,
+      keyword: String(values.get("keyword") ?? "").trim(),
+      brand: String(values.get("brand") ?? "").trim(),
+      size: String(values.get("size") ?? "").trim(),
+      max: String(values.get("max") ?? ""),
+      alerts: values.get("alerts") === "on",
+    };
+    update({
+      searches: id
+        ? data.searches.map((value) => (value.id === id ? search : value))
+        : [...data.searches, search],
+    });
+    setModal(null);
+    router.push(`/searches/${search.id}`);
+    setToast("Search saved");
+  }
+  function saveStyle(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget),
+      name = String(values.get("name") ?? "").trim(),
+      rules = values.getAll("rules").map(String),
+      old = modal?.kind === "style" ? modal.name : undefined;
+    if (!name || !rules.length) {
+      setFormError("Give your style a name and select at least one aesthetic.");
+      return;
+    }
+    if (data.styles.some((style) => style !== old && style.toLowerCase() === name.toLowerCase())) {
+      setFormError("You already have a style with that name.");
+      return;
+    }
+    const styleRules = { ...data.styleRules };
+    if (old) delete styleRules[old];
+    styleRules[name] = rules;
+    update({
+      styles: old
+        ? data.styles.map((style) => (style === old ? name : style))
+        : [...data.styles, name],
+      styleRules,
+    });
+    setModal(null);
+    setToast("Style saved. Your Discover filters are updated.");
+  }
+  function finishSetup(value: Preferences) {
+    setData(normalizePreferences(value));
+    setNeedsSetup(false);
+    try {
+      localStorage.setItem("forme-onboarding-complete", "1");
+      localStorage.removeItem("forme-onboarding-pending");
+    } catch {
+      setStorageError(
+        "Your setup will last for this session only because browser storage is unavailable.",
+      );
+    }
+    router.replace("/discover");
+  }
+  function leaveSetup() {
+    setNeedsSetup(false);
+    try {
+      localStorage.setItem("forme-onboarding-complete", "1");
+      localStorage.removeItem("forme-onboarding-pending");
+    } catch {}
+  }
+  if (!ready)
+    return (
+      <div className="loading" aria-live="polite">
+        FORME · Loading your edit…
+      </div>
+    );
+  if (pathname === "/welcome")
+    return (
+      <Welcome
+        settings={data}
+        brands={[
+          ...new Set([
+            "Our Legacy",
+            "Acne Studios",
+            "Lemaire",
+            "Studio Nicholson",
+            "Auralee",
+            "Margaret Howell",
+            "COS",
+            "Arket",
+            ...catalog,
+            ...source.map((item) => item.brand),
+          ]),
+        ]}
+        sizeLabels={source.map((item) => item.size)}
+        finish={finishSetup}
+        leave={leaveSetup}
+      />
+    );
+  const isShopping =
+    ["/", "/discover", "/following", "/searches", "/saved"].includes(pathname) ||
+    pathname.startsWith("/searches/");
+  return (
+    <FeedContext.Provider
+      value={{
+        data,
+        mode,
+        windows: windows.current,
+        recordVisible: learning.visible,
+        list,
+        reasons: recommendationReasons,
+        toggleSave,
+        addSuggestion,
+        dismiss,
+        restore: restorePiece,
+        brandPreferences: (brand) => open({ kind: "exclude-brand", brand }),
+      }}
+    >
+      <AppShell
+        pathname={pathname}
+        collapsed={collapsed}
+        toggleSidebar={toggleSidebar}
+        settings={data}
+        mode={mode}
+        freshnessStatus={freshnessStatus}
+        filtersOpen={modal?.kind === "sizes"}
+        openFilters={() => open({ kind: "sizes" })}
+        menu={menu}
+        setMenu={setMenu}
+      >
+        {storageError && (
+          <div className="notice" role="alert">
+            {storageError}
+          </div>
+        )}
+        {mode === "demo" && (
+          <div className="demo-indicator" role="status">
+            Demo · illustrative listings <Link href="/tools">Change source</Link>
+          </div>
+        )}
+        {mode === "live" && feedError && (
+          <div className="notice error-notice" role="alert">
+            <span>{feedError}</span>
+            <button className="btn light" disabled={retrying} onClick={() => void retryListings()}>
+              {retrying ? "Trying again…" : "Retry listings"}
+            </button>
+          </div>
+        )}
+        {isShopping && mode === "live" && !snapshot && !feedError ? <ListingSkeleton /> : content}
+      </AppShell>
+      {refreshOpen && (
+        <Dialog
+          title="Find new pieces"
+          className="refresh-modal"
+          close={() => setRefreshOpen(false)}
+        >
+          <RefreshControls
+            compact
+            initialScope={
+              pathname === "/discover"
+                ? "discover"
+                : pathname === "/following"
+                  ? "following"
+                  : "personal"
+            }
+            settings={data}
+            savedListings={savedListings}
+            refreshed={reloadListings}
+            close={() => setRefreshOpen(false)}
+          />
+        </Dialog>
+      )}
+      {styleMenu && (
+        <Dialog title="Your Discover filters" close={() => setStyleMenu(false)}>
+          <p className="style-menu-intro">
+            Edit your style preferences. Styles appear as Discover filters when matching pieces have
+            been classified.
+          </p>
+          <div className="style-menu-list">
+            {data.styles.map((style) => (
+              <div key={style}>
+                <span>{style}</span>
+                <div>
+                  <button
+                    className="textbutton"
+                    onClick={() => {
+                      setStyleMenu(false);
+                      open({ kind: "style", name: style });
+                    }}
+                  >
+                    Edit<span className="sr-only"> {style}</span>
+                  </button>
+                  <button
+                    className="icon-button"
+                    aria-label={`Remove ${style}`}
+                    onClick={() =>
+                      update({
+                        styles: data.styles.filter((value) => value !== style),
+                      })
+                    }
+                  >
+                    <X />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            className="btn"
+            onClick={() => {
+              setStyleMenu(false);
+              open({ kind: "style" });
+            }}
+          >
+            <Plus /> Create style
+          </button>
+        </Dialog>
+      )}
+      {modal && (
+        <PreferencesDialog
+          modal={modal}
+          data={data}
+          source={source}
+          formError={formError}
+          close={() => setModal(null)}
+          update={update}
+          notify={setToast}
+          saveSearch={saveSearch}
+          saveStyle={saveStyle}
+          brandState={brandState}
+          excludeBrand={excludeBrand}
+          deleteSearch={(id) => {
+            update({ searches: data.searches.filter((search) => search.id !== id) });
+            setModal(null);
+            router.push("/searches");
+            setToast("Search deleted");
+          }}
+          reset={() => {
+            setFeedbackUndo(null);
+            setData(structuredClone(initialPreferences));
+            setModal(null);
+            router.push("/");
+            setToast("Preferences reset");
+          }}
+        />
+      )}
+      {reasonKey && (
+        <DislikeReasonDialog
+          reason={data.tasteFeedback?.find((row) => row.key === reasonKey)?.reason}
+          close={() => setReasonKey(null)}
+          change={(reason) => changeReason(reasonKey, reason)}
+        />
+      )}
+      <div className="toast-stack">
+        {feedbackUndo && (
+          <UndoToast
+            key={
+              feedbackUndo.kind === "piece"
+                ? `piece:${feedbackUndo.key}`
+                : `brand:${feedbackUndo.brand}`
+            }
+            message={
+              feedbackUndo.kind === "piece"
+                ? "Piece hidden from your feeds."
+                : `${feedbackUndo.brand} hidden from your feeds.`
+            }
+            undoLabel={feedbackUndo.kind === "piece" ? "Undo Not for me" : "Undo brand exclusion"}
+            onReason={
+              feedbackUndo.kind === "piece"
+                ? () => {
+                    setReasonKey(feedbackUndo.key);
+                    setFeedbackUndo(null);
+                  }
+                : undefined
+            }
+            onUndo={undoFeedback}
+            onDismiss={() => setFeedbackUndo(null)}
+          />
+        )}
+        {toast && (
+          <div className="toast" role="status">
+            {toast}
+          </div>
+        )}
+      </div>
+    </FeedContext.Provider>
+  );
 }

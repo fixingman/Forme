@@ -7,7 +7,7 @@ test.beforeEach(async({page})=>{await page.route('**/api/listings',route=>route.
 test.beforeEach(async({page})=>{await page.route('**/data/vinted.json',route=>route.fulfill({json:snapshot}));});
 
 test('backup downloads, previews and restores preferences across reload',async({page})=>{
- await page.goto('/items/10447404161');await page.getByRole('button',{name:'♡ Save item',exact:true}).click();
+ await page.goto('/items/10447404161');await page.getByRole('button',{name:'Save item',exact:true}).click();
  await page.goto('/tools?preview=digest');await page.getByLabel('New pieces from followed brands',{exact:true}).uncheck();await page.getByLabel('Listing data').selectOption('demo');
  await page.goto('/settings');const downloadEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Download settings backup'}).click();const download=await downloadEvent,path=await download.path();const backup=JSON.parse(await readFile(path!,'utf8'));
  expect(backup.app).toBe('forme');expect(backup.savedListings).toHaveLength(1);expect(backup.savedListings[0].originalTitle).toBe('Acne skinnjacka');expect(backup.settings.digest.following).toBe(false);expect(backup.display.mode).toBe('demo');expect(JSON.stringify(backup)).not.toMatch(/API_KEY|Bearer|cookie/i);

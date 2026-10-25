@@ -22,7 +22,7 @@ test('Home, listing state, deep links, reload and browser history stay consisten
   await expect(page).toHaveURL(/\/items\/6$/);
   await page.goBack(); await expect(page).toHaveURL(/\/saved$/);
   await page.goForward(); await expect(page).toHaveURL(/\/items\/6$/);
-  await page.reload(); await expect(page.getByRole('button',{name:'♥ Saved — remove'})).toBeVisible();
+  await page.reload(); await expect(page.getByRole('button',{name:'Saved',exact:true})).toBeVisible();
 });
 
 test('style suggestions can be added, edited and removed with URL filters', async ({page})=>{

@@ -23,6 +23,28 @@ test('preview spends nothing, cap gates the run and only an explicit run refresh
  await page.getByText('Budget and history',{exact:true}).click();await page.getByLabel('Daily credit cap',{exact:true}).fill('30');await page.getByRole('button',{name:'Save daily cap',exact:true}).click();expect(runs).toBe(0);
  await page.getByRole('button',{name:'Find pieces · up to 15 credits'}).click();await expect(page.getByText('Refresh complete:',{exact:false})).toBeVisible();expect(runs).toBe(1);
 });
+test('daily limit can be turned off and larger quotes still need explicit collection confirmation',async({page})=>{
+ let status:{dailyCap:number;remainingCredits:number|null}=initial,runs=0,plans=0;
+ await page.route('**/api/refresh',route=>{
+  if(route.request().method()==='GET')return route.fulfill({json:{...initial,...status}});
+  const value=route.request().postDataJSON();
+  if(value.action==='budget'){expect(value.dailyCap).toBe(0);status={dailyCap:0,remainingCredits:null};return route.fulfill({json:{...initial,...status}});}
+  if(value.action==='plan'){plans++;return route.fulfill({json:{id:'large-quote',maximumCredits:value.limit*5,maximumItems:value.limit*20,exactBrandJobs:0,jobs:Array.from({length:value.limit},(_,index)=>({brand:`Fixture brand ${index+1}`}))}});}
+  expect(value.action).toBe('run');expect(value.id).toBe('large-quote');runs++;return route.fulfill({json:{status:'complete',accepted:0,eligible:0}});
+ });
+ await page.setViewportSize({width:390,height:844});await page.goto('/tools');
+ await page.getByText('Budget and history',{exact:true}).click();
+ await page.getByRole('checkbox',{name:'Limit daily spending',exact:true}).uncheck();
+ await expect(page.getByLabel('Daily credit cap',{exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Save daily cap',exact:true}).click();
+ expect(plans).toBe(0);expect(runs).toBe(0);
+ await expect(page.locator('.refresh-allowance')).toHaveText('Daily limit off');
+ await page.getByLabel('Brand searches',{exact:true}).selectOption('120');
+ await page.getByRole('button',{name:'See refresh cost',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Find pieces · up to 600 credits',exact:true})).toBeEnabled();
+ expect(plans).toBe(1);expect(runs).toBe(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.getByRole('button',{name:'Find pieces · up to 600 credits',exact:true}).click();expect(runs).toBe(1);
+});
 test('changing preferences discards the preview and feedback can restore a hidden recommendation',async({page})=>{
  await page.route('**/api/refresh',route=>route.fulfill({json:route.request().method()==='GET'?initial:{id:'quote',maximumCredits:5,maximumItems:20,exactBrandJobs:1,department:'Men’s catalog',sizeFiltering:'Local sizes.',translation:'Cached translations.',coverage:'Clothing only.',jobs:[{brand:'Auralee',brandId:'2053426'}]}}));
  await page.goto('/tools');await page.getByRole('button',{name:'See refresh cost'}).click();await expect(page.getByRole('button',{name:'Find pieces · up to 5 credits'})).toBeVisible();
