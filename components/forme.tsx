@@ -356,7 +356,7 @@ export default function Forme() {
     [source, savedListings, mode],
   );
   const baselineRecommendations = useMemo(
-    () => recommendListings(source, data, { signals: allListings }),
+    () => recommendListings(source, data, { signals: allListings, excludeSaved: true }),
     [source, data, allListings],
   );
   const learning = useLearning({

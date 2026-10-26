@@ -233,10 +233,13 @@ const seed=async(page:Page,extra:{key:string;reason?:string}[])=>{await expect(r
 const seedRows=(page:Page,extra:{key:string;reason?:string}[])=>page.evaluate(rows=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);s.dismissed=[...s.dismissed,...rows.map(row=>row.key)];s.tasteFeedback=[...s.tasteFeedback,...rows.map(row=>({key:row.key,brand:'Auralee',traits:[],style:'',title:`Knit ${row.key.slice(-3)}`,...(row.reason?{reason:row.reason}:{})}))];localStorage.setItem('forme-v2',JSON.stringify(s));},extra);
 const stored=(page:Page,key:string)=>page.evaluate(k=>JSON.parse(localStorage.getItem('forme-v2')!).tasteFeedback.find((row:{key:string})=>row.key===k),key);
 test('a new hide records when it happened; older hides stay undated and a reason change keeps the date',async({page})=>{
- await page.clock.install({time:new Date('2026-10-25T10:00:00Z')});
+ // The fixtures are stamped "a day before the real now", so the fake clock must be derived from them: a fixed date drifts into the
+ // past of the fixtures as real time passes, which makes every piece "from the future" and drops it from the feed.
+ const start=Date.parse(at)+60*60*1000;
+ await page.clock.install({time:new Date(start)});
  await page.goto('/items/95002');await page.getByRole('button',{name:'Not for me: Silk shirt',exact:true}).click();
  await expect.poll(async()=>(await stored(page,'vinted:95002'))?.hiddenAt).toBeTruthy();
- const hidden=(await stored(page,'vinted:95002')).hiddenAt as string;expect(hidden).toMatch(/^2026-10-25T10:00:0\d\.\d{3}Z$/);
+ const hidden=(await stored(page,'vinted:95002')).hiddenAt as string;expect(hidden).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);expect(Date.parse(hidden)).toBeGreaterThanOrEqual(start);expect(Date.parse(hidden)-start).toBeLessThan(10_000);   // stamped by the page's own clock
  expect((await stored(page,'vinted:96001')).hiddenAt).toBeUndefined();   // hidden before dates were recorded
  await page.goto('/settings');await page.clock.runFor(60_000);
  await row(page,'Auralee').getByRole('button',{name:'Edit reason for Silk shirt',exact:true}).click();await dialog(page).getByRole('button',{name:'Not the right colour',exact:true}).click();

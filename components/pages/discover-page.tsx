@@ -110,6 +110,16 @@ export default function Page({
           {data.following.length
             ? "We’ll show relevant pieces beyond your followed brands when they’re available in the collection."
             : "Your followed brands give Discover a starting point. You can add or change them any time."}
+          {data.saved.length > 0 && (
+            <>
+              {" "}
+              Pieces you save leave Discover and stay in{" "}
+              <Link className="textlink" href="/saved">
+                Saved items
+              </Link>
+              .
+            </>
+          )}
         </Empty>
       ) : (
         <Grid values={feed} />
