@@ -252,6 +252,15 @@ export default function LearningDashboard({
           {outbox.error || message}
         </p>
       )}
+      {outbox.rejected > 0 && (
+        <p role="status">
+          {outbox.rejected} feedback {outbox.rejected === 1 ? "operation was" : "operations were"}{" "}
+          refused by the server and set aside, so they no longer hold up the rest.{" "}
+          <button className="textbutton" onClick={outbox.discardRejected}>
+            Discard
+          </button>
+        </p>
+      )}
       {outbox.pending > 0 && (
         <p role="status">
           {outbox.pending} feedback operations kept on this device.{" "}

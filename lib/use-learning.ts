@@ -9,6 +9,9 @@ import {
   pendingOperations,
   queueOperation,
   acknowledgeOperation,
+  drainQueue,
+  rejectedOperations,
+  clearRejected,
 } from "./domain/learning-outbox.mjs";
 export type DislikeReason =
   | "style"
@@ -41,8 +44,20 @@ export async function learningRequest(body?: unknown) {
       : {}),
   });
   const value = await response.json();
-  if (!response.ok) throw Error(value.error ?? "Learning history is unavailable.");
+  if (!response.ok)
+    throw new LearningRequestError(
+      value.error ?? "Learning history is unavailable.",
+      response.status,
+    );
   return value;
+}
+/** The status tells the outbox whether a refusal is permanent (400, 413) or worth retrying. */
+export class LearningRequestError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 function stagingScope() {
   const key = "forme-learning-pending-session";
@@ -60,13 +75,16 @@ function stagingScope() {
 export function useLearningOutbox(identity: string | null, captureUnassigned = false) {
   const storageKey = identity ? "forme-learning-outbox-v1:" + identity : null;
   const [pending, setPending] = useState(0),
+    [rejected, setRejected] = useState(0),
     [error, setError] = useState("");
   const currentKey = useRef(storageKey);
   currentKey.current = storageKey;
   const refresh = useCallback(() => {
     if (storageKey || captureUnassigned)
       try {
-        setPending(readQueue(storageKey ?? stagingScope().key).length);
+        const scope = storageKey ?? stagingScope().key;
+        setPending(readQueue(scope).length);
+        setRejected(rejectedOperations(localStorage, scope).length);
       } catch (e) {
         setError((e as Error).message);
       }
@@ -75,18 +93,22 @@ export function useLearningOutbox(identity: string | null, captureUnassigned = f
     if (!storageKey || locks.has(storageKey)) return;
     locks.add(storageKey);
     try {
-      let queue = readQueue(storageKey);
-      while (queue.length) {
-        const op = queue[0];
-        await learningRequest({
-          action: op.action,
-          ...(op.action === "events" ? { events: op.events } : { exposure: op.exposure }),
-        });
-        if (currentKey.current !== storageKey) return;
-        acknowledgeOperation(localStorage, storageKey, op.id);
-        queue = readQueue(storageKey);
-        setPending(queue.length);
-      }
+      await drainQueue(
+        localStorage,
+        storageKey,
+        (op: Operation) =>
+          learningRequest({
+            action: op.action,
+            ...(op.action === "events" ? { events: op.events } : { exposure: op.exposure }),
+          }),
+        {
+          stillCurrent: () => currentKey.current === storageKey,
+          onChange: (count: number) => {
+            setPending(count);
+            setRejected(rejectedOperations(localStorage, storageKey).length);
+          },
+        },
+      );
       setError("");
     } catch (e) {
       setError((e as Error).message);
@@ -142,7 +164,12 @@ export function useLearningOutbox(identity: string | null, captureUnassigned = f
       window.removeEventListener("storage", refresh);
     };
   }, [storageKey, flush, refresh]);
-  return { pending, error, setError, enqueue, flush };
+  const discardRejected = useCallback(() => {
+    if (!storageKey) return;
+    clearRejected(localStorage, storageKey);
+    setRejected(0);
+  }, [storageKey]);
+  return { pending, rejected, error, setError, enqueue, flush, discardRejected };
 }
 export function useLearning({
   settings,
