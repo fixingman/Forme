@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import type { Preferences } from "@/lib/preferences";
 import type { Listing } from "@/lib/catalog";
 import { createBackup } from "@/lib/settings-backup";
-import { ENGINE_IDS, REASON_LABELS } from "@/lib/domain/learning.mjs";
+import {
+  ENGINE_IDS,
+  REASON_LABELS,
+  DISLIKE_MIN_HIDES,
+  DISLIKE_MIN_DAYS,
+} from "@/lib/domain/learning.mjs";
 import { learningRequest, useLearningOutbox, type DislikeReason } from "@/lib/use-learning";
 import Dialog from "./ui/dialog";
 import { Header, Empty } from "./ui/page-states";
@@ -34,6 +39,14 @@ type Report = {
       days: number;
       meanDailyGain: number;
       lowerGain: number | null;
+      route?: "pairs" | "dislikes" | null;
+      dislikes?: {
+        hides: number;
+        days: number;
+        meanPosition: number | null;
+        currentPosition: number | null;
+        lowerPosition: number | null;
+      };
     }
   >;
   metric: string;
@@ -369,6 +382,17 @@ export default function LearningDashboard({
                         <th>{names[name]}</th>
                         <td>
                           {metric.status.replaceAll("-", " ")} · {metric.days} days
+                          {metric.dislikes && metric.dislikes.hides > 0 && (
+                            <p className="small">
+                              Pieces you hid: {metric.dislikes.hides} over {metric.dislikes.days}{" "}
+                              {metric.dislikes.days === 1 ? "day" : "days"}, placed{" "}
+                              {Math.round((metric.dislikes.meanPosition ?? 0) * 100)}% of the way
+                              down (Current:{" "}
+                              {Math.round((metric.dislikes.currentPosition ?? 0) * 100)}
+                              %). Needs {DISLIKE_MIN_HIDES} pieces over {DISLIKE_MIN_DAYS} days.
+                              {metric.route === "dislikes" && " Ready on this evidence."}
+                            </p>
+                          )}
                           {metric.pairs > 0 && (
                             <p className="small">
                               Gain vs Current:{" "}
