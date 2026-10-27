@@ -3,12 +3,15 @@ import { useMemo } from "react";
 import { hiddenEntries } from "@/lib/domain/hidden-pieces.mjs";
 import type { Listing } from "@/lib/catalog";
 import HiddenPieceList, { type HiddenEntry } from "./hidden-piece-list";
+import RecoverHides from "./recover-hides";
+import type { Preferences } from "@/lib/preferences";
 export default function HiddenPieces({
   keys,
   source,
   remembered = [],
   restore,
   editReason,
+  recover,
 }: {
   keys: string[];
   source: Listing[];
@@ -21,6 +24,7 @@ export default function HiddenPieces({
   }[];
   restore: (key: string) => void;
   editReason?: (key: string) => void;
+  recover?: (settings: Preferences) => void;
 }) {
   const entries = useMemo(
     () => hiddenEntries({ keys, source, remembered }) as HiddenEntry[],
@@ -33,6 +37,7 @@ export default function HiddenPieces({
         Not for me hides a piece from all your feeds and helps refine Discover. Your saves stay
         saved. Bring pieces back here.
       </p>
+      {recover && <RecoverHides keys={keys} recover={recover} />}
       {entries.length ? (
         <HiddenPieceList entries={entries} restore={restore} editReason={editReason} />
       ) : (

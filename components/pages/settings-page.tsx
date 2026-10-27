@@ -18,6 +18,7 @@ export default function SettingsPage({
   restoreSettings,
   restorePiece,
   editReason,
+  recoverHides,
   sync,
   reset,
 }: {
@@ -29,6 +30,7 @@ export default function SettingsPage({
   restoreSettings: (backup: Backup) => void;
   restorePiece: (key: string) => void;
   editReason?: (key: string) => void;
+  recoverHides?: (settings: Preferences) => void;
   sync: ReturnType<typeof useProfileSync>;
   reset: () => void;
 }) {
@@ -62,6 +64,7 @@ export default function SettingsPage({
         remembered={data.tasteFeedback}
         restore={restorePiece}
         editReason={editReason}
+        recover={recoverHides}
       />
       <section className="panel">
         <h3>Your preferences</h3>

@@ -23,6 +23,7 @@ import RefreshControls from "./refresh-controls";
 import FeedFreshness from "./feed-freshness";
 import { useListingUpdates } from "@/lib/use-listing-updates";
 import { feedbackSnapshot } from "@/lib/domain/taste-profile.mjs";
+import { mergeHides } from "@/lib/domain/profile-merge.mjs";
 import RankingPreview from "./ranking-preview";
 import UndoToast from "./undo-toast";
 import DislikeReasonDialog from "./dislike-reason";
@@ -304,6 +305,17 @@ export default function Forme() {
     }));
     setToast("");
     setFeedbackUndo({ kind: "piece", key });
+  }
+  // Brings back hides from the older copy that was kept aside when the account's changes replaced this browser's copy. Everything
+  // currently hidden stays hidden; the sync then sends the result up like any other edit.
+  function recoverHides(older: Preferences) {
+    const { carried } = mergeHides(older, data, { includeUndated: true });
+    if (!carried) return;
+    setData((previous) => {
+      const merged = mergeHides(older, previous, { includeUndated: true }).settings;
+      return { ...previous, dismissed: merged.dismissed, tasteFeedback: merged.tasteFeedback };
+    });
+    setToast(`Brought back ${carried} hidden ${carried === 1 ? "piece" : "pieces"}.`);
   }
   function restorePiece(key: string) {
     learning.record(key, "restore");
@@ -721,6 +733,7 @@ export default function Forme() {
         restorePiece={restorePiece}
         sync={sync}
         editReason={setReasonKey}
+        recoverHides={recoverHides}
         reset={() => open({ kind: "reset" })}
       />
     );
