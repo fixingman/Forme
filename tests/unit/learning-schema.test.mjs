@@ -49,6 +49,7 @@ before(async () => {
       "utf8",
     ),
   );
+  await db.exec(readFileSync(new URL("../../supabase/migrations/20261026000000_learning_context_lookup.sql", import.meta.url), "utf8"));
   await db.query(
     "insert into public.allowed_users (email, role) values ('owner@example.com','owner'),('friend@example.com','member')",
   );
@@ -124,4 +125,20 @@ test("selection has optimistic concurrency and deleting learning leaves real pro
       .keep,
     true,
   );
+});
+
+
+test("latest context lookup uses the owner/channel index and leaves full history readable", async () => {
+ const records=Array.from({length:40},(_,i)=>{const id=randomUUID();return {kind:'context',id,data:{id,channel:i%7===0?'preview':'shopping',items:[{padding:'x'.repeat(2000)}]}};});
+ await as(owner,()=>db.query('select public.append_learning_records($1::jsonb)',[JSON.stringify(records)]));
+ await db.exec('ANALYZE public.learning_records; SET enable_seqscan=off');
+ try {
+  const plan=await db.query(`EXPLAIN SELECT id,ordinal,data,recorded_at FROM public.learning_records WHERE user_id=$1 AND kind='context' AND data->>'channel'='preview' ORDER BY ordinal DESC LIMIT 1`,[owner.id]);
+  assert.match(JSON.stringify(plan.rows),/learning_context_channel_order/);
+ }finally{await db.exec('SET enable_seqscan=on');}
+ const latest=await as(owner,()=>db.query(`SELECT id FROM public.learning_records WHERE kind='context' AND data->>'channel'='preview' ORDER BY ordinal DESC LIMIT 1`));
+ assert.equal(latest.rows[0].id,records.filter(r=>r.data.channel==='preview').at(-1).id);
+ assert.equal((await as(friend,()=>db.query(`SELECT id FROM public.learning_records WHERE kind='context'`))).rows.length,0);
+ assert.equal((await as(owner,()=>db.query(`SELECT id FROM public.learning_records WHERE kind='context'`))).rows.length,records.length);
+ await db.exec(readFileSync(new URL("../../supabase/migrations/20261026000000_learning_context_lookup.sql", import.meta.url), "utf8"));
 });

@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { learningService } from "../../lib/server/learning.mjs";
-import { localLearningStore } from "../../lib/server/learning-store.mjs";
+import { localLearningStore, hostedLearningStore } from "../../lib/server/learning-store.mjs";
 import {
   activeFeedback,
   trainingExamples,
@@ -469,4 +469,78 @@ test("hosted status with pending feedback never opens a local training store", a
     else process.env.FORME_DATA_DIR = previous;
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('status counts feedback without reading catalogue contexts', async () => {
+ const root=mkdtempSync(join(tmpdir(),'forme-light-status-'));
+ const real=localLearningStore(root);
+ try {
+  await real.append([{kind:'event',id:randomUUID(),data:event('vinted:1','save',{item:item(1)})}]);
+  const repository=()=>({
+   list:kind=>{assert.notEqual(kind,'context','status must not download catalogue snapshots');return real.list(kind);},
+   selection:()=>real.selection(),close(){},
+  });
+  const status=await learningService({root,repository,auto:false}).status();
+  assert.equal(status.events,1);assert.equal(status.canTrain,true);
+ } finally {real.close();rmSync(root,{recursive:true,force:true});}
+});
+
+test('training and scheduling use only latest contexts while exports keep the full history', async()=>{
+ const root=mkdtempSync(join(tmpdir(),'forme-training-context-heads-'));
+ const real=localLearningStore(root);let latestReads=0,fullReads=0;
+ const repository=()=>({
+  list:kind=>{if(kind==='context'){fullReads++;throw Error('unbounded catalogue read');}return real.list(kind);},
+  latestContexts:()=>{latestReads++;return real.latestContexts();},
+  append:rows=>real.append(rows),selection:()=>real.selection(),close(){},
+ });
+ try{
+  const old={id:randomUUID(),profile,items:[item(1)],channel:'shopping'};
+  await real.append([{kind:'context',id:old.id,data:old}]);
+  const latest={id:randomUUID(),profile,items:[item(2),item(3)],channel:'shopping'};
+  await real.append([{kind:'context',id:latest.id,data:latest}]);
+  const preview={id:randomUUID(),profile,items:[item(4)],channel:'preview'};
+  await real.append([{kind:'context',id:preview.id,data:preview}]);
+  const service=learningService({root,repository,auto:false,rank:async()=>({}),now:()=>Date.parse(at)});
+  const shopping=await service.train({channel:'shopping'}),other=await service.train({channel:'preview'});
+  assert.deepEqual(shopping.engines.current.keys,[item(2).sourceKey,item(3).sourceKey]);assert.deepEqual(other.engines.current.keys,[item(4).sourceKey]);
+  assert.ok(latestReads>=4);assert.equal(fullReads,0);
+  assert.equal((await real.list('context')).length,3);
+ }finally{real.close();rmSync(root,{recursive:true,force:true});}
+});
+
+test('latest local contexts are owner-scoped and independent across channels',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'forme-context-isolation-'));const a=localLearningStore(root,'a'),b=localLearningStore(root,'b');
+ try{const rows=['shopping','preview','shopping','preview'].map(channel=>{const id=randomUUID();return {id,kind:'context',data:{id,channel}};});await a.append(rows);await b.append([{id:randomUUID(),kind:'context',data:{channel:'shopping'}}]);
+ assert.deepEqual((await a.latestContexts()).map(r=>r.id),rows.slice(-2).map(r=>r.id));assert.equal((await b.latestContexts()).length,1);assert.equal((await a.list('context')).length,4);
+ }finally{a.close();b.close();rmSync(root,{recursive:true,force:true});}
+});
+
+test('hosted context heads are bounded and full context export is paginated without loss',async()=>{
+ const rows=Array.from({length:18},(_,i)=>({id:String(i),ordinal:i+1,kind:'context',data:{channel:i===0?'preview':'shopping',items:['x'.repeat(5000)]}}));
+ const delivered=[];
+ const client={from(table){assert.equal(table,'learning_records');let filters=[],descending=false,cap=Infinity,offset=0;
+  const query={select(){return query;},eq(k,v){filters.push([k,v]);return query;},order(k,options){assert.equal(k,'ordinal');descending=options?.ascending===false;return query;},limit(n){cap=n;return query;},range(a,b){offset=a;cap=b-a+1;return query;},then(resolve){
+   const filtered=rows.filter(r=>filters.every(([k,v])=>(k==='data->>channel'?r.data.channel:r[k])===v)).sort((a,b)=>descending?b.ordinal-a.ordinal:a.ordinal-b.ordinal);
+   const data=filtered.slice(offset,offset+cap);delivered.push(data.length);return Promise.resolve({data,error:null}).then(resolve);
+  }};return query;}};
+ const store=hostedLearningStore(client),latest=await store.latestContexts();
+ assert.deepEqual(latest.map(r=>r.id),['0','17']);assert.deepEqual(delivered,[1,1],'latest queries never transfer older catalogues');
+ delivered.length=0;assert.deepEqual((await store.list('context')).map(r=>r.id),rows.map(r=>r.id));assert.ok(delivered.every(n=>n<=1),'explicit export never uses a bulk catalogue page');
+});
+
+
+test('JSON key order after a database round trip does not detach learned predictions',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'forme-canonical-context-')),real=localLearningStore(root);
+ const reorder=value=>Array.isArray(value)?value.map(reorder):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).reverse().map(([key,row])=>[key,reorder(row)])):value;
+ const repository=()=>({list:kind=>real.list(kind),latestContexts:()=>real.latestContexts(),append:rows=>real.append(reorder(rows)),selection:()=>real.selection(),close(){}});
+ const rank=async(_root,directory)=>{const keys=JSON.parse(readFileSync(join(directory,'input.json'),'utf8')).case.candidateKeys;return Object.fromEntries(['river','river-regularized','gorse'].map(engine=>[engine,{mode:engine==='gorse'?'tags-and-factorization-machines':'weighted-online-logistic-replayed-10-passes',ranking:keys.map((key,i)=>({key,score:keys.length-i}))}]));};
+ try{
+  const service=learningService({root,repository,auto:false,rank,now:()=>Date.parse(at)});
+  const pieces=[item(1),item(2),item(3)];await service.snapshot(profile,pieces);const trained=await service.train();
+  const next=await service.snapshot(reorder(profile),pieces);
+  for(const engine of ['river','river-regularized','gorse'])assert.equal(next.engines[engine].mode,'learned',engine);
+  const predicted=(await real.list('run')).at(-1).data;assert.equal(predicted.modelRunId,trained.id);
+  const changed=await service.snapshot(profile,pieces.map((row,i)=>i===0?{...row,price:row.price+1}:row));assert.equal(changed.engines.river.mode,'unavailable','actual listing changes still invalidate the frozen model');
+  const filtered=await service.snapshot({...profile,settings:{...profile.settings,excluded:['Auralee']}},pieces);assert.equal(filtered.items.length,0,'real preference changes still invalidate matching');
+ }finally{real.close();rmSync(root,{recursive:true,force:true});}
 });
