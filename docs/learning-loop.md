@@ -28,7 +28,7 @@ Feedback made while account identity is being resolved is staged in a tab-sessio
 
 The immutable journal is canonical for learning; active examples are derived by replay. Profile preferences remain a compatible working copy using the existing revision-protected sync path, not a second atomic write in the journal transaction. Profile sync now requeues edits made during an in-flight save and only clears dirty state after the newest state is acknowledged.
 
-Shopping and private-preview channels stay separate. Legacy ranking-preview/study files are not imported. A private-preview-trained candidate requires explicit consent before Discover can use it; preview votes never become actual saves/hides.
+The server still understands a separate private-preview channel, but nothing creates one any more: the in-app comparison that produced it was removed on 2 November (see [decisions](decisions.md)). Legacy ranking-preview and study files are not imported.
 
 ## Frozen predictions and local training
 

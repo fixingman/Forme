@@ -105,6 +105,6 @@ The combiner rejects unknown/overlapping IDs, changed content/observation finger
 
 Keep the current app ranker until owner judgments show a useful improvement and restoration/filter guarantees pass. Compare the same catalog and feedback, inspect errors rather than relying on one aggregate metric, and preserve the existing ranking as a fallback. No integration, model-hosting arrangement or deployment has been approved by the benchmark alone.
 
-The subsequently approved [private ranking preview](ranking-preview.md) exposes these actual local models inside Collection tools. Preview feedback remains separate from account preferences; it does not change the evaluation’s lack of a production-quality winner.
+The private in-app ranking preview that once exposed these local models was removed on 2 November; the silent test on Discover is now the way they are compared with real behaviour. This does not change the evaluation’s lack of a production-quality winner.
 
 The proposed next step is the [reason-aware learning/evaluation plan](recommendation-learning-plan.md), which adds distinct reason semantics, durable evidence and forward validation. This plan is not yet implemented and does not replace the results or selection boundary above.

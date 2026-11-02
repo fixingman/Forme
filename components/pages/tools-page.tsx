@@ -106,20 +106,6 @@ export default function ToolsPage({
           <DataQuality snapshot={snapshot} />
         </details>
       )}
-      {mode === "live" &&
-        typeof window !== "undefined" &&
-        window.location.hostname === "127.0.0.1" && (
-          <section className="panel">
-            <h3>Ranking preview</h3>
-            <p>
-              Compare Current, River and Gorse using existing pieces. Preview choices stay separate
-              from your saves.
-            </p>
-            <Link className="textlink" href="/tools/ranking-preview">
-              Open private ranking preview →
-            </Link>
-          </section>
-        )}
       <details className="tools-disclosure" id="feedback">
         <summary>Recommendation feedback</summary>
         <div>

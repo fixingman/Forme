@@ -52,10 +52,6 @@ The adjacent **…** brand control opens an explicit **Not interested in [brand]
 
 Up to 200 compact feedback summaries survive outside the current collection in optional `tasteFeedback` profile data. Only currently dismissed keys contribute; Undo/Restore immediately stops using a signal. Existing backups without this field still work, and new v1 exports/account profiles retain it. Inferred hints do not populate verified listing fields. Department, size, excluded brands, review and availability filters remain hard constraints. Counts are preference signals, not inferred clicks, impressions, conversion rates or proof that relevance has improved. Saved-item snapshots and known active listings provide context; unmatched IDs remain visible as outside the current collection. Browser persistence, JSON backup, and explicit local-profile checkpoints remain available.
 
-## Ranking preview
-
-Collection tools also links to the owner’s local [Ranking preview](ranking-preview.md), with Current / River / Gorse views and a fixed blind comparison. Its ratings, model snapshots and optional earlier-study imports stay separate from real saves and hidden pieces. Switching views reads frozen results; a new comparison is needed to train on new preview feedback. It never calls collection or translation.
-
 ## Local pilot boundary and verification
 
 The refresh API requires loopback Host / matching Origin, JSON input, a bounded request body, and validated FORME settings. Collection writes are disabled on Vercel and require the configured owner authorization when sign-in is enforced. Keys remain server-side and status exposes only availability. Accounts and hosted reads now exist separately; see [accounts setup](accounts-setup.md). There is still no cloud job runner, distributed budget, or automatic brand/size-reference lookup.

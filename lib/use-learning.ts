@@ -213,6 +213,11 @@ export function useLearning({
   ]);
   const latest = useRef({ view });
   latest.current = { view };
+  // One frozen ranking per visit to a feed. A vote changes your preferences but not the feed (the pieces, your filters and
+  // departments), so it does not need a new ranking: the old way uploaded a fresh ~2 MB catalogue on every vote, which slowed the
+  // history down until votes were cast faster than the answers arrived, and every answer was then thrown away. Only while a
+  // learned version is selected does a vote need a new request, because whether that version still applies depends on your votes.
+  const refresh = view && view.selectedName !== "current" ? fingerprint : "";
   useEffect(() => {
     const clear = () => {
       setView(null);
@@ -254,7 +259,7 @@ export function useLearning({
       clearTimeout(timer);
       generation.current++;
     };
-  }, [identity, discover, fingerprint]);
+  }, [identity, discover, contextKey, refresh]);
   const visible = useCallback(
     (item: Listing, position?: number) => {
       const current = latest.current.view,

@@ -19,7 +19,7 @@ Keep one primary action per local task. Collection quotes and spending confirmat
 
 ## Listings and dates
 
-`ListingMetadata` and `ListingPrice` own card brand/title, condition-before-size and price history presentation. Both normal feeds and ranking previews use them; preview voting remains a separate action area. Item details reuse the same price/date rules, while keeping expanded provenance and availability context.
+`ListingMetadata` and `ListingPrice` own card brand/title, condition-before-size and price history presentation. Every feed uses them. Item details reuse the same price/date rules, while keeping expanded provenance and availability context.
 
 `lib/domain/presentation.mjs` formats recorded prices with Swedish currency presentation, up to two meaningful decimal places and one currency label. Whole amounts omit decimals. Never round a preview differently from the shopping feed. UI dates use English abbreviated month names and hour/minute precision without seconds. Unknown dates remain unknown; formatting never updates an observation time.
 

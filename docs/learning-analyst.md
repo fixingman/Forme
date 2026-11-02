@@ -11,7 +11,7 @@ Activation is a return to the [learning loop](learning-loop.md#the-loop-continue
 ## Without a provider
 
 1. Sync pending feedback and train the next local candidates through the existing learning controls.
-2. Choose Shopping or Private preview, then **Prepare evidence**. This freezes a development packet and makes no external request.
+2. Select **Prepare evidence**. This freezes a development packet and makes no external request.
 3. Review or download the packet. It includes instructions, the response schema and a JSON template. Using it with an external assistant is a separate, deliberate data transfer; FORME does not upload the download automatically.
 4. Paste the returned JSON into **Import analyst report**. Imports are labelled as having unverified model origin. They must match the packet hash, schema and existing evidence IDs; this validates structure and references, not the truth of the explanation.
 5. Review the cited facts. An existing River/Gorse comparison can be tracked explicitly. Feature or data changes remain drafts requiring reviewed implementation. Tracking neither trains nor activates an engine.

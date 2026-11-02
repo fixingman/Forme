@@ -140,7 +140,6 @@ function Evidence({ ids, facts }: { ids: string[]; facts: Fact[] }) {
 export default function LearningAnalyst({ pendingFeedback = 0 }: { pendingFeedback?: number }) {
   const [status, setStatus] = useState<Status | null>(null),
     [packet, setPacket] = useState<Packet | null>(null),
-    [channel, setChannel] = useState("shopping"),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [importing, setImporting] = useState(false),
@@ -176,7 +175,7 @@ export default function LearningAnalyst({ pendingFeedback = 0 }: { pendingFeedba
     setBusy(true);
     setMessage("");
     try {
-      const value = await api({ action: "prepare", channel });
+      const value = await api({ action: "prepare", channel: "shopping" });
       setPacket(value);
       await reload(value.id);
       setMessage("Evidence is ready to review. Preparing it makes no model call.");
@@ -276,13 +275,6 @@ export default function LearningAnalyst({ pendingFeedback = 0 }: { pendingFeedba
           </li>
         </ol>
         <div className="analyst-controls">
-          <label>
-            Feedback source
-            <select value={channel} onChange={(event) => setChannel(event.target.value)}>
-              <option value="shopping">Shopping feedback</option>
-              <option value="preview">Private preview feedback</option>
-            </select>
-          </label>
           <button
             className={packet ? "btn light" : "btn"}
             disabled={busy || pendingFeedback > 0 || !status}

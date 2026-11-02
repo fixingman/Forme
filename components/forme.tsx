@@ -24,7 +24,6 @@ import FeedFreshness from "./feed-freshness";
 import { useListingUpdates } from "@/lib/use-listing-updates";
 import { feedbackSnapshot } from "@/lib/domain/taste-profile.mjs";
 import { mergeHides } from "@/lib/domain/profile-merge.mjs";
-import RankingPreview from "./ranking-preview";
 import UndoToast from "./undo-toast";
 import DislikeReasonDialog from "./dislike-reason";
 import LearningDashboard from "./learning-dashboard";
@@ -741,8 +740,6 @@ export default function Forme() {
     content = (
       <LearningDashboard
         settings={data}
-        savedListings={savedListings}
-        items={source}
         identity={
           mode === "live" ? (sync.account?.email ?? (sync.state === "off" ? "local" : null)) : null
         }
@@ -754,21 +751,6 @@ export default function Forme() {
         }
       />
     );
-  else if (pathname === "/tools/ranking-preview")
-    content =
-      mode === "live" ? (
-        <RankingPreview settings={data} savedListings={savedListings} />
-      ) : (
-        <>
-          <Header
-            title="Ranking preview"
-            description="Choose Vinted under Collection tools to compare existing listings."
-          />
-          <Link href="/tools" className="btn light">
-            Collection tools
-          </Link>
-        </>
-      );
   else if (pathname === "/tools")
     content = (
       <ToolsPage

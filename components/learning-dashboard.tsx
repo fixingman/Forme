@@ -2,31 +2,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Preferences } from "@/lib/preferences";
-import type { Listing } from "@/lib/catalog";
-import { createBackup } from "@/lib/settings-backup";
-import {
-  ENGINE_IDS,
-  REASON_LABELS,
-  DISLIKE_MIN_HIDES,
-  DISLIKE_MIN_DAYS,
-} from "@/lib/domain/learning.mjs";
-import { learningRequest, useLearningOutbox, type DislikeReason } from "@/lib/use-learning";
+import { ENGINE_IDS, DISLIKE_MIN_HIDES, DISLIKE_MIN_DAYS } from "@/lib/domain/learning.mjs";
+import { sameBrand } from "@/lib/domain/brands.mjs";
+import { learningRequest, useLearningOutbox } from "@/lib/use-learning";
 import Dialog from "./ui/dialog";
-import { Header, Empty } from "./ui/page-states";
-import DislikeReasonDialog from "./dislike-reason";
+import { Header } from "./ui/page-states";
 import LearningAnalyst from "./learning-analyst";
-import ListingMetadata from "./listings/listing-metadata";
-import ProductPhoto from "./product-photo";
-import { formatDateTime } from "@/lib/domain/presentation.mjs";
 type Engine = { mode: string; keys: string[]; fallbackKeys?: string[] };
-type Comparison = {
-  id: string;
-  createdAt: string;
-  items: Listing[];
-  engines: Record<string, Engine>;
-  training: { positive: number; negative: number };
-  profileFingerprint?: string;
-};
 type Report = {
   channel: string;
   counts: Record<string, number>;
@@ -50,6 +32,11 @@ type Report = {
     }
   >;
   metric: string;
+  uncounted?: {
+    total: number;
+    reasons: Record<string, number>;
+    brands: Record<string, number>;
+  };
 };
 type Run = {
   id: string;
@@ -71,6 +58,68 @@ type Status = {
   reports: Report[];
   runs: Run[];
 };
+/** Plain wording for each reason a vote was not counted, in the order a reader would expect to look for them. */
+const UNCOUNTED_TEXT: [string, (n: number) => string][] = [
+  [
+    "exposureLost",
+    (n) => `${n} were shown on Discover, but the record of that never reached your history`,
+  ],
+  ["beforeRanking", (n) => `${n} were cast before the ranking for that visit was saved`],
+  ["usedToTrain", (n) => `${n} were on pieces the models had already trained on`],
+  ["notListed", (n) => `${n} were not among the pieces in the ranking that was shown`],
+  ["outsideWindow", (n) => `${n} fall outside the evaluation window`],
+  ["olderPolicy", (n) => `${n} were recorded under an older rule`],
+];
+/**
+ * Says how many saves and "Not my style" hides are counted by the silent test and, for the rest, why not, so a low count can be read
+ * rather than guessed at. The two reasons that need no fix are named first: a piece on a brand you follow is never in Discover's
+ * ranking, and a vote cast away from Discover has no ranking to be measured against.
+ */
+function UncountedNote({ report, following }: { report: Report; following: string[] }) {
+  const gone = report.uncounted;
+  if (!gone) return null;
+  const counted = report.counts.positive + report.counts.style,
+    total = counted + gone.total;
+  if (!total) return null;
+  const unranked = gone.reasons.noRanking ?? 0,
+    onFollowed = Object.entries(gone.brands).reduce(
+      (sum, [brand, n]) => (following.some((value) => sameBrand(value, brand)) ? sum + n : sum),
+      0,
+    ),
+    rest = UNCOUNTED_TEXT.filter(([reason]) => (gone.reasons[reason] ?? 0) > 0);
+  return (
+    <div className="uncounted-note">
+      <p>
+        <strong>
+          {counted} of {total}
+        </strong>{" "}
+        of your saves and “Not my style” hides are counted by the silent test.
+        {gone.total > 0 &&
+          " The other " + gone.total + " are not, and that does not count against any model."}
+      </p>
+      {gone.total > 0 && (
+        <details className="learning-disclosure">
+          <summary>Why some votes are not counted</summary>
+          <div className="learning-detail-body">
+            <ul className="small">
+              {unranked > 0 && (
+                <li>
+                  {unranked} had no Discover ranking on screen when you voted
+                  {onFollowed > 0 &&
+                    ` (at least ${onFollowed} on brands you follow, which Discover never ranks)`}
+                  . Votes on other pages, or before Discover had loaded, cannot be measured.
+                </li>
+              )}
+              {rest.map(([reason, text]) => (
+                <li key={reason}>{text(gone.reasons[reason])}.</li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
 const names: Record<string, string> = {
   current: "Current",
   river: "River",
@@ -79,33 +128,19 @@ const names: Record<string, string> = {
 };
 export default function LearningDashboard({
   settings,
-  savedListings,
-  items,
   identity,
   historyCleared,
 }: {
   settings: Preferences;
-  savedListings: Listing[];
-  items: Listing[];
   identity: string | null;
   historyCleared: () => void;
 }) {
   const outbox = useLearningOutbox(identity);
   const [status, setStatus] = useState<Status | null>(null),
-    [comparison, setComparison] = useState<Comparison | null>(null),
-    [engine, setEngine] = useState("current"),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [shown, setShown] = useState(12);
-  const [choices, setChoices] = useState<
-      Record<string, { choice: string; id: string; reason?: string }>
-    >({}),
-    [reasonKey, setReasonKey] = useState<string | null>(null),
     [confirm, setConfirm] = useState<{ run: Run; engine: string } | null>(null),
-    [consent, setConsent] = useState(false),
     [deleting, setDeleting] = useState(false);
-  const profileFingerprint = JSON.stringify([settings, savedListings, items]);
-  const staleComparison = !!comparison && comparison.profileFingerprint !== profileFingerprint;
   async function reload() {
     try {
       setStatus(await learningRequest());
@@ -118,113 +153,6 @@ export default function LearningDashboard({
     const timer = setInterval(() => void reload(), 5000);
     return () => clearInterval(timer);
   }, [identity]);
-  async function create() {
-    if (busy || !identity) return;
-    setBusy(true);
-    setMessage("Preparing a frozen comparison with the local models…");
-    try {
-      const value = await learningRequest({
-        action: "snapshot",
-        profile: createBackup(settings, { mode: "live", collapsed: false }, savedListings),
-        items,
-        channel: "preview",
-        comparison: true,
-      });
-      setComparison({ ...value, profileFingerprint });
-      setChoices({});
-      setEngine("current");
-      setShown(12);
-      setMessage("Ready. Votes stay separate from your FORME saves.");
-      await reload();
-    } catch (e) {
-      setMessage((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  function vote(item: Listing, choice: string) {
-    if (!comparison || staleComparison) return;
-    const key = item.sourceKey!,
-      exposureId = crypto.randomUUID(),
-      id = crypto.randomUUID();
-    if (
-      !outbox.enqueue({
-        id: exposureId,
-        action: "exposure",
-        exposure: {
-          id: exposureId,
-          runId: comparison.id,
-          keys: [key],
-          channel: "preview",
-          surface: "/tools/learning",
-          trigger: "decision",
-          engine,
-          positions: { [key]: (comparison.engines[engine]?.keys.indexOf(key) ?? -1) + 1 },
-        },
-      })
-    )
-      return;
-    const action = choice === "save" ? "save" : choice === "dismiss" ? "dismiss" : "restore";
-    // Clear the preceding active state first; Skip/Undo are neutral, never inverse-gradient dislikes.
-    const reset = [
-      {
-        id: crypto.randomUUID(),
-        key,
-        action: "restore",
-        channel: "preview",
-        occurredAt: new Date().toISOString(),
-      },
-      {
-        id: crypto.randomUUID(),
-        key,
-        action: "unsave",
-        channel: "preview",
-        occurredAt: new Date().toISOString(),
-      },
-    ];
-    const event = {
-      id,
-      key,
-      action,
-      channel: "preview",
-      item,
-      occurredAt: new Date().toISOString(),
-      exposureId,
-      ...(action === "dismiss" ? { reason: "unspecified" } : {}),
-    };
-    if (
-      outbox.enqueue({
-        id,
-        action: "events",
-        events: choice === "skip" ? reset : [...reset, event],
-      })
-    )
-      setChoices((previous) => ({ ...previous, [key]: { choice, id } }));
-  }
-  function reason(key: string, value: DislikeReason) {
-    const parent = choices[key];
-    if (!parent) return;
-    const id = crypto.randomUUID();
-    if (
-      outbox.enqueue({
-        id,
-        action: "events",
-        events: [
-          {
-            id,
-            key,
-            action: "reason",
-            targetId: parent.id,
-            reason: value,
-            channel: "preview",
-            occurredAt: new Date().toISOString(),
-          },
-        ],
-      })
-    )
-      setChoices((previous) => ({ ...previous, [key]: { ...parent, reason: value } }));
-    setReasonKey(null);
-  }
   async function select(runId: string | undefined, name: string) {
     setBusy(true);
     try {
@@ -233,7 +161,6 @@ export default function LearningDashboard({
         runId,
         engine: name,
         expectedRevision: status?.selection.revision,
-        allowPreviewTraining: consent,
       });
       setStatus((old) => (old ? { ...old, selection: value } : old));
       setConfirm(null);
@@ -249,8 +176,6 @@ export default function LearningDashboard({
       setBusy(false);
     }
   }
-  const view = comparison?.engines[engine],
-    byKey = new Map(comparison?.items.map((item) => [item.sourceKey, item]) ?? []);
   return (
     <div className="learning-dashboard">
       <Link className="backlink" href="/tools">
@@ -258,7 +183,7 @@ export default function LearningDashboard({
       </Link>
       <Header
         title="Learning and evaluation"
-        description="Learn from your saves and dislikes, compare recommendations and choose what Discover uses."
+        description="Learn from your saves and dislikes, see how the candidates compare, and choose what Discover uses."
       />
       {(message || outbox.error) && (
         <p className="notice" role="status">
@@ -304,21 +229,6 @@ export default function LearningDashboard({
             </button>
           )}
         </section>
-        <section className="panel learning-section">
-          <h2>Give fresh feedback</h2>
-          <p>
-            Compare the same pieces across Current, River and Gorse. Your preview votes help
-            evaluate the next version.
-          </p>
-          <p className="small">Preview votes stay separate from your saves and hidden pieces.</p>
-          <button
-            className="btn"
-            disabled={busy || outbox.pending > 0 || !items.length || !identity}
-            onClick={() => void create()}
-          >
-            {busy ? "Preparing…" : "Create learning comparison"}
-          </button>
-        </section>
       </div>
       <section className="panel learning-section">
         <h2>Recommendation quality</h2>
@@ -340,98 +250,97 @@ export default function LearningDashboard({
             </p>
           </div>
         </details>
-        {status?.reports.map((report) => (
-          <div className="learning-report" key={report.channel}>
-            <h3>
-              {report.channel === "preview" ? "Private preview judgments" : "Shopping judgments"}
-            </h3>
-            <details className="learning-disclosure learning-breakdown">
-              <summary>Feedback breakdown</summary>
-              <div className="learning-detail-body">
-                <p className="small">
-                  {report.counts.positive} positive · {report.counts.style} style dislikes ·{" "}
-                  {report.counts.material} material · {report.counts.color} colour ·{" "}
-                  {report.counts.price} price · {report.counts.data} data reports ·{" "}
-                  {report.counts.unneeded ?? 0} not needed · {report.counts.similar ?? 0} similar ·{" "}
-                  {report.counts.unknown} unknown motives · {report.counts.unscored} without prior
-                  predictions
-                </p>
+        {status?.reports
+          .filter((report) => report.channel === "shopping")
+          .map((report) => (
+            <div className="learning-report" key={report.channel}>
+              <h3>Shopping judgments</h3>
+              <details className="learning-disclosure learning-breakdown">
+                <summary>Feedback breakdown</summary>
+                <div className="learning-detail-body">
+                  <p className="small">
+                    {report.counts.positive} positive · {report.counts.style} style dislikes ·{" "}
+                    {report.counts.material} material · {report.counts.color} colour ·{" "}
+                    {report.counts.price} price · {report.counts.data} data reports ·{" "}
+                    {report.counts.unneeded ?? 0} not needed · {report.counts.similar ?? 0} similar
+                    · {report.counts.unknown} unknown motives · {report.counts.unscored} without
+                    prior predictions
+                  </p>
+                </div>
+              </details>
+              <UncountedNote report={report} following={settings.following} />
+              <div className="feedback-table-wrap">
+                <table className="feedback-table">
+                  <thead>
+                    <tr>
+                      <th>Candidate</th>
+                      <th>Evidence</th>
+                      <th>Paired comparisons</th>
+                      <th>Review</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ENGINE_IDS.slice(1).map((name) => {
+                      const metric = report.engines[name],
+                        run = [...(status?.runs ?? [])]
+                          .reverse()
+                          .find(
+                            (row) =>
+                              row.channel === report.channel &&
+                              row.engines[name]?.mode === "learned",
+                          );
+                      return (
+                        <tr key={name}>
+                          <th>{names[name]}</th>
+                          <td>
+                            {metric.status.replaceAll("-", " ")} · {metric.days} days
+                            {metric.dislikes && metric.dislikes.hides > 0 && (
+                              <p className="small">
+                                Pieces you hid: {metric.dislikes.hides} over {metric.dislikes.days}{" "}
+                                {metric.dislikes.days === 1 ? "day" : "days"}, placed{" "}
+                                {Math.round((metric.dislikes.meanPosition ?? 0) * 100)}% of the way
+                                down (Current:{" "}
+                                {Math.round((metric.dislikes.currentPosition ?? 0) * 100)}
+                                %). Needs {DISLIKE_MIN_HIDES} pieces over {DISLIKE_MIN_DAYS} days.
+                                {metric.route === "dislikes" && " Ready on this evidence."}
+                              </p>
+                            )}
+                            {metric.pairs > 0 && (
+                              <p className="small">
+                                Gain vs Current:{" "}
+                                {Number.isFinite(metric.meanDailyGain)
+                                  ? `${(metric.meanDailyGain * 100).toFixed(1)} points`
+                                  : "—"}
+                                . Lower bound:{" "}
+                                {metric.lowerGain != null
+                                  ? `${(metric.lowerGain * 100).toFixed(1)} points`
+                                  : "needs more days"}
+                                .
+                              </p>
+                            )}
+                          </td>
+                          <td>{metric.pairs}</td>
+                          <td>
+                            <button
+                              className="btn light"
+                              disabled={busy || !status.canTrain || !metric.eligible || !run}
+                              onClick={() => setConfirm({ run: run!, engine: name })}
+                            >
+                              Review activation
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </details>
-            <div className="feedback-table-wrap">
-              <table className="feedback-table">
-                <thead>
-                  <tr>
-                    <th>Candidate</th>
-                    <th>Evidence</th>
-                    <th>Paired comparisons</th>
-                    <th>Review</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ENGINE_IDS.slice(1).map((name) => {
-                    const metric = report.engines[name],
-                      run = [...(status?.runs ?? [])]
-                        .reverse()
-                        .find(
-                          (row) =>
-                            row.channel === report.channel && row.engines[name]?.mode === "learned",
-                        );
-                    return (
-                      <tr key={name}>
-                        <th>{names[name]}</th>
-                        <td>
-                          {metric.status.replaceAll("-", " ")} · {metric.days} days
-                          {metric.dislikes && metric.dislikes.hides > 0 && (
-                            <p className="small">
-                              Pieces you hid: {metric.dislikes.hides} over {metric.dislikes.days}{" "}
-                              {metric.dislikes.days === 1 ? "day" : "days"}, placed{" "}
-                              {Math.round((metric.dislikes.meanPosition ?? 0) * 100)}% of the way
-                              down (Current:{" "}
-                              {Math.round((metric.dislikes.currentPosition ?? 0) * 100)}
-                              %). Needs {DISLIKE_MIN_HIDES} pieces over {DISLIKE_MIN_DAYS} days.
-                              {metric.route === "dislikes" && " Ready on this evidence."}
-                            </p>
-                          )}
-                          {metric.pairs > 0 && (
-                            <p className="small">
-                              Gain vs Current:{" "}
-                              {Number.isFinite(metric.meanDailyGain)
-                                ? `${(metric.meanDailyGain * 100).toFixed(1)} points`
-                                : "—"}
-                              . Lower bound:{" "}
-                              {metric.lowerGain != null
-                                ? `${(metric.lowerGain * 100).toFixed(1)} points`
-                                : "needs more days"}
-                              .
-                            </p>
-                          )}
-                        </td>
-                        <td>{metric.pairs}</td>
-                        <td>
-                          <button
-                            className="btn light"
-                            disabled={busy || !status.canTrain || !metric.eligible || !run}
-                            onClick={() => {
-                              setConfirm({ run: run!, engine: name });
-                              setConsent(false);
-                            }}
-                          >
-                            Review activation
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <p className="small">
+                {report.metric} Unrated pieces are not dislikes; this is not a full-feed accuracy
+                percentage.
+              </p>
             </div>
-            <p className="small">
-              {report.metric} Unrated pieces are not dislikes; this is not a full-feed accuracy
-              percentage.
-            </p>
-          </div>
-        ))}
+          ))}
         <p className="small">
           {status?.job
             ? `Local training: ${status.job.state}. ${status.job.message ?? ""}`
@@ -497,111 +406,6 @@ export default function LearningDashboard({
           </div>
         </div>
       </details>
-      {staleComparison && (
-        <p className="notice" role="status">
-          Your preferences or inventory changed. Create a fresh learning comparison before rating
-          more pieces.
-        </p>
-      )}
-      {comparison && !staleComparison && (
-        <>
-          <div className="preview-tabs" role="group" aria-label="Learning engine">
-            {ENGINE_IDS.map((name) => (
-              <button
-                className={`chip ${engine === name ? "active" : ""}`}
-                key={name}
-                aria-pressed={engine === name}
-                onClick={() => setEngine(name)}
-              >
-                {names[name]}
-              </button>
-            ))}
-          </div>
-          <p className="small section-note">
-            Snapshot {formatDateTime(comparison.createdAt)} · {comparison.training.positive}{" "}
-            positive / {comparison.training.negative} style training examples.{" "}
-            {view?.mode === "learned"
-              ? `Actual learned ordering. ${view.fallbackKeys?.length ?? 0} previously judged pieces retain fallback order.`
-              : `${view?.mode ?? "unavailable"}: Current order is used where the model is not ready.`}
-          </p>
-          {!comparison.items.length ? (
-            <Empty title="No new eligible pieces to review">
-              Your filters and earlier feedback still apply.
-            </Empty>
-          ) : (
-            <div className="grid preview-grid">
-              {view?.keys.slice(0, shown).map((key) => {
-                const item = byKey.get(key);
-                if (!item) return null;
-                const choice = choices[key];
-                return (
-                  <article className="product" key={key}>
-                    <div className="photo">
-                      <ProductPhoto src={item.imageUrl} alt={item.title} />
-                    </div>
-                    <div className="productmeta">
-                      <ListingMetadata item={item} />
-                      <div className="preview-choices">
-                        {[
-                          ["save", "Would save"],
-                          ["dismiss", "Not for me"],
-                          ["skip", "Skip"],
-                        ].map(([value, label]) => (
-                          <button
-                            className="chip"
-                            key={value}
-                            aria-label={`${label}: ${item.title}`}
-                            aria-pressed={choice?.choice === value}
-                            onClick={() => vote(item, value)}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      {choice?.choice === "dismiss" && (
-                        <button className="textbutton" onClick={() => setReasonKey(key)}>
-                          {choice.reason
-                            ? REASON_LABELS[choice.reason as keyof typeof REASON_LABELS]
-                            : "Add reason"}
-                        </button>
-                      )}
-                      {choice && (
-                        <button className="textbutton" onClick={() => vote(item, "skip")}>
-                          Clear preview choice
-                        </button>
-                      )}
-                      {item.sourceUrl && (
-                        <a
-                          className="textlink"
-                          href={item.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Original listing ↗
-                        </a>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-          {view && shown < view.keys.length && (
-            <div className="load-more">
-              <button className="btn light" onClick={() => setShown((value) => value + 12)}>
-                Show more review pieces
-              </button>
-            </div>
-          )}
-        </>
-      )}
-      {reasonKey && (
-        <DislikeReasonDialog
-          close={() => setReasonKey(null)}
-          reason={choices[reasonKey]?.reason}
-          change={(value) => reason(reasonKey, value)}
-        />
-      )}
       {deleting && (
         <Dialog title="Delete learning history?" close={() => setDeleting(false)}>
           <p>
@@ -622,7 +426,6 @@ export default function LearningDashboard({
                   });
                   historyCleared();
                   window.dispatchEvent(new Event("forme-learning-selection"));
-                  setComparison(null);
                   setDeleting(false);
                   await reload();
                   setMessage("Learning history deleted. Discover uses Current.");
@@ -648,21 +451,10 @@ export default function LearningDashboard({
             return to Current any time. The evidence concerns the model configuration across later
             judgments; it does not guarantee every new piece will suit you.
           </p>
-          {confirm.run.channel === "preview" && (
-            <label className="checkline">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(event) => setConsent(event.target.checked)}
-              />
-              Use this model’s private-preview learning for Discover. My actual saves remain
-              unchanged.
-            </label>
-          )}
           <div className="inline">
             <button
               className="btn"
-              disabled={busy || (confirm.run.channel === "preview" && !consent)}
+              disabled={busy}
               onClick={() => void select(confirm.run.id, confirm.engine)}
             >
               Activate {names[confirm.engine]}

@@ -2774,119 +2774,6 @@ details > p {
   }
 }
 
-/* Private ranking comparison, separate from normal feed cards. */
-.ranking-preview .backlink {
-  gap: 6px;
-}
-.preview-boundary {
-  font-size: 13px;
-  color: var(--muted);
-  margin: -8px 0 24px;
-}
-.preview-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin: 24px 0 14px;
-}
-.preview-tabs,
-.preview-view-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.preview-meta {
-  display: flex;
-  gap: 8px 24px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.preview-model-note {
-  margin: 10px 0;
-}
-.preview-setup {
-  margin: 14px 0;
-  font-size: 13px;
-}
-.preview-setup summary {
-  cursor: pointer;
-}
-.preview-setup p {
-  margin: 10px 0;
-}
-.preview-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 24px;
-}
-.preview-rank {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  min-width: 30px;
-  height: 30px;
-  padding: 4px 8px;
-  text-align: center;
-  background: var(--surface);
-  border-radius: 6px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-}
-.preview-choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0;
-}
-.preview-choices .chip {
-  font-size: 12px;
-  padding: 8px 9px;
-  min-height: 42px;
-}
-.preview-product .textlink {
-  margin-top: 6px;
-}
-.ranking-preview .head .btn {
-  flex-shrink: 0;
-}
-.ranking-preview .section-note {
-  max-width: 740px;
-}
-@media (max-width: 720px) {
-  .preview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .preview-controls {
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .preview-view-actions {
-    gap: 12px;
-  }
-  .preview-choices .chip {
-    font-size: 11px;
-    padding: 7px 8px;
-    min-height: 44px;
-    flex: 1;
-  }
-  .preview-choices .chip:last-child {
-    flex-basis: 100%;
-  }
-  .preview-meta {
-    font-size: 11px;
-  }
-  .preview-tabs .chip {
-    min-height: 44px;
-  }
-  .ranking-preview .head .btn {
-    align-self: flex-start;
-  }
-}
 /* Undo toast: the dark toast surface with a message, a quiet Undo and a close button.
    A hairline bar drains along the bottom edge over the toast's lifetime and freezes while the countdown is paused. */
 .toast-action {
@@ -3490,7 +3377,7 @@ a.hidden-piece-name:hover strong {
 }
 .learning-overview {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
 }
 .learning-overview > .panel {
@@ -3527,9 +3414,6 @@ a.hidden-piece-name:hover strong {
 }
 .learning-report .feedback-table-wrap {
   margin: var(--space-3) 0;
-}
-.learning-dashboard .preview-tabs {
-  margin: var(--space-5) 0;
 }
 .learning-section-heading {
   display: flex;
@@ -3824,4 +3708,14 @@ a.hidden-piece-name:hover strong {
 }
 .publish-facts dd {
   margin: 0;
+}
+.uncounted-note {
+  margin: var(--space-3) 0 var(--space-4);
+}
+.uncounted-note p {
+  margin: 0 0 var(--space-2);
+}
+.uncounted-note ul {
+  margin: 0;
+  padding-left: var(--space-5);
 }
