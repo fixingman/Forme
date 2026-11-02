@@ -10,7 +10,7 @@ export default function HiddenPieces({
   source,
   remembered = [],
   restore,
-  editReason,
+  changeReason,
   recover,
 }: {
   keys: string[];
@@ -23,7 +23,7 @@ export default function HiddenPieces({
     sourceUrl?: string;
   }[];
   restore: (key: string) => void;
-  editReason?: (key: string) => void;
+  changeReason?: (key: string, reason: import("@/lib/use-learning").DislikeReason) => void;
   recover?: (settings: Preferences) => void;
 }) {
   const entries = useMemo(
@@ -39,7 +39,7 @@ export default function HiddenPieces({
       </p>
       {recover && <RecoverHides keys={keys} recover={recover} />}
       {entries.length ? (
-        <HiddenPieceList entries={entries} restore={restore} editReason={editReason} />
+        <HiddenPieceList entries={entries} restore={restore} changeReason={changeReason} />
       ) : (
         <p className="small section-note">You haven’t hidden any pieces.</p>
       )}

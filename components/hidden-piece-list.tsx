@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useId, useState } from "react";
-import { Search, X } from "lucide-react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
+import { Search, X, ChevronDown } from "lucide-react";
 import { images } from "@/lib/catalog";
 import {
   PAGE_SIZE,
@@ -10,6 +10,8 @@ import {
   searchHidden,
 } from "@/lib/domain/hidden-pieces.mjs";
 import { REASON_LABELS } from "@/lib/domain/dislike-reasons.mjs";
+import { ReasonOptions } from "./dislike-reason";
+import type { DislikeReason } from "@/lib/use-learning";
 import ProductPhoto from "./product-photo";
 
 export type HiddenEntry = {
@@ -38,12 +40,28 @@ const nameOf = (entry: HiddenEntry) => entry.title || entry.brand || entry.label
 export default function HiddenPieceList({
   entries,
   restore,
-  editReason,
+  changeReason,
 }: {
   entries: HiddenEntry[];
   restore: (key: string) => void;
-  editReason?: (key: string) => void;
+  changeReason?: (key: string, reason: DislikeReason) => void;
 }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const list = useRef<HTMLUListElement>(null),
+    restoreFocus = useRef(false);
+  const closeEditor = () => {
+    restoreFocus.current = true;
+    setEditing(null);
+  };
+  useLayoutEffect(() => {
+    if (editing || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    // A reason/search filter may remove the edited row. Keep keyboard focus in
+    // Hidden pieces instead of returning it to a button that has just unmounted.
+    const target = trigger.current?.isConnected ? trigger.current : list.current;
+    target?.focus({ preventScroll: true });
+  }, [editing, entries]);
   const [query, setQuery] = useState(""),
     [filter, setFilter] = useState("all"),
     [limit, setLimit] = useState(PAGE_SIZE),
@@ -56,6 +74,7 @@ export default function HiddenPieceList({
     shown = matches.slice(0, limit);
   const search = (value: string) => {
     setQuery(value);
+    setEditing(null);
     setLimit(PAGE_SIZE);
   };
   return (
@@ -96,6 +115,7 @@ export default function HiddenPieceList({
               aria-pressed={active === option.value}
               onClick={() => {
                 setFilter(option.value);
+                setEditing(null);
                 setLimit(PAGE_SIZE);
               }}
             >
@@ -113,7 +133,7 @@ export default function HiddenPieceList({
               : "No hidden pieces with this reason."}
         </p>
       )}
-      <ul className="hidden-piece-list">
+      <ul ref={list} className="hidden-piece-list" tabIndex={-1} aria-label="Hidden pieces">
         {shown.map((entry) => (
           <li className="hidden-piece" key={entry.key}>
             <div className="hidden-piece-photo">
@@ -131,10 +151,30 @@ export default function HiddenPieceList({
                   {entry.title && <span>{entry.title}</span>}
                 </span>
               )}
-              {entry.reason && (
+              {!changeReason && entry.reason && (
                 <span className="hidden-piece-reason">
                   {REASON_LABELS[entry.reason as keyof typeof REASON_LABELS]}
                 </span>
+              )}
+              {changeReason && (
+                <button
+                  type="button"
+                  className="hidden-reason-trigger"
+                  aria-label={`Edit reason for ${nameOf(entry)}`}
+                  aria-expanded={editing === entry.key}
+                  aria-controls={editing === entry.key ? `${searchId}-${entry.key}` : undefined}
+                  onClick={(event) => {
+                    trigger.current = event.currentTarget;
+                    setEditing(editing === entry.key ? null : entry.key);
+                  }}
+                >
+                  <span className={entry.reason ? "hidden-piece-reason" : undefined}>
+                    {entry.reason
+                      ? REASON_LABELS[entry.reason as keyof typeof REASON_LABELS]
+                      : "Add reason"}
+                  </span>
+                  <ChevronDown aria-hidden="true" />
+                </button>
               )}
               {entry.status === "remembered" && (
                 <span className="hidden-piece-note">No longer in your collection</span>
@@ -155,15 +195,6 @@ export default function HiddenPieceList({
                 </a>
               )}
             </div>
-            {editReason && (
-              <button
-                className="textbutton"
-                aria-label={`Edit reason for ${nameOf(entry)}`}
-                onClick={() => editReason(entry.key)}
-              >
-                Reason
-              </button>
-            )}
             <button
               className="textbutton"
               aria-label={`Restore ${nameOf(entry)}`}
@@ -171,6 +202,45 @@ export default function HiddenPieceList({
             >
               Restore
             </button>
+            {changeReason && editing === entry.key && (
+              <div
+                className="hidden-reason-editor"
+                id={`${searchId}-${entry.key}`}
+                role="region"
+                aria-label={`Reason for ${nameOf(entry)}`}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeEditor();
+                  }
+                }}
+              >
+                <ReasonOptions
+                  reason={entry.reason}
+                  change={(reason) => {
+                    changeReason(entry.key, reason);
+                    closeEditor();
+                  }}
+                />
+                <div className="reason-footer">
+                  <button className="textbutton" onClick={closeEditor}>
+                    Not now
+                  </button>
+                  {entry.reason && (
+                    <button
+                      className="textbutton"
+                      onClick={() => {
+                        changeReason(entry.key, "unspecified");
+                        closeEditor();
+                      }}
+                    >
+                      Remove reason
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </li>
         ))}
       </ul>

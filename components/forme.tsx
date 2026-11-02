@@ -3,8 +3,8 @@ import HomePage from "./pages/home-page";
 import DiscoverPage from "./pages/discover-page";
 import BrandsPage from "./pages/brands-page";
 import StylesPage from "./pages/styles-page";
-import ToolsPage from "./pages/tools-page";
-import SettingsPage from "./pages/settings-page";
+import dynamic from "next/dynamic";
+import { useDiscoverOrder } from "@/lib/use-discover-order";
 
 import Link from "next/link";
 import PreferencesDialog, { type Modal } from "./preferences-dialog";
@@ -24,9 +24,10 @@ import FeedFreshness from "./feed-freshness";
 import { useListingUpdates } from "@/lib/use-listing-updates";
 import { feedbackSnapshot } from "@/lib/domain/taste-profile.mjs";
 import { mergeHides } from "@/lib/domain/profile-merge.mjs";
+import LearningSyncNotice from "./learning-sync-notice";
 import UndoToast from "./undo-toast";
 import DislikeReasonDialog from "./dislike-reason";
-import LearningDashboard from "./learning-dashboard";
+
 import { useLearning, type DislikeReason } from "@/lib/use-learning";
 import { orderEligible } from "@/lib/domain/learning.mjs";
 import { matchesGender } from "@/lib/domain/gender.mjs";
@@ -53,6 +54,17 @@ import {
   type Preferences,
   type Search as SavedSearch,
 } from "@/lib/preferences";
+
+// Collection and learning tools are loaded only when their route is opened.
+const ToolsPage = dynamic(() => import("./pages/tools-page"), {
+  loading: () => <ListingSkeleton />,
+});
+const SettingsPage = dynamic(() => import("./pages/settings-page"), {
+  loading: () => <ListingSkeleton />,
+});
+const LearningDashboard = dynamic(() => import("./learning-dashboard"), {
+  loading: () => <ListingSkeleton />,
+});
 
 type FeedbackUndo =
   | { kind: "piece"; key: string }
@@ -379,13 +391,26 @@ export default function Forme() {
     discover: pathname === "/discover",
     enabled: mode === "live",
   });
-  const recommendations = useMemo(
+  const rankedRecommendations = useMemo(
     () =>
       learning.selectedKeys
         ? orderEligible(baselineRecommendations, learning.selectedKeys)
         : baselineRecommendations,
     [baselineRecommendations, learning.selectedKeys],
   );
+  const recommendations = useDiscoverOrder(rankedRecommendations, {
+    active: pathname === "/discover",
+    retain: /^\/items\/\d+$/.test(pathname),
+    mode,
+    engine: learning.selectedName,
+    identity: sync.account?.email ?? null,
+    gender: data.gender,
+    sizing: data.sizing,
+    following: data.following,
+    excluded: data.excluded,
+    styles: data.styles,
+    styleRules: data.styleRules,
+  });
   function changeReason(key: string, reason: DislikeReason) {
     const previous = data.tasteFeedback?.find((row) => row.key === key),
       item = allListings.find((row) => listingKey(row) === key);
@@ -432,13 +457,27 @@ export default function Forme() {
       ),
     [recommendations, learning.selectedName],
   );
-  const genderHidden = source.filter((item) => !matchesGender(item, data.gender)).length;
-  const list = visibleListings(data, source).filter(canBrowse),
-    fresh = list.filter(isNew),
-    followed = list
-      .filter((item) => data.following.some((brand) => sameBrand(brand, item.brand)))
-      .sort((a, b) => a.age - b.age),
-    rare = list.filter((item) => item.rarity >= 8).sort((a, b) => b.rarity - a.rarity);
+  const genderHidden = useMemo(
+    () => source.filter((item) => !matchesGender(item, data.gender)).length,
+    [source, data.gender],
+  );
+  // Queue acknowledgements and dialogs do not change inventory or shopping filters.
+  const list = useMemo(
+    () => visibleListings(data, source).filter(canBrowse),
+    [source, data.gender, data.sizing, data.excluded, data.dismissed],
+  );
+  const fresh = useMemo(() => list.filter(isNew), [list]);
+  const followed = useMemo(
+    () =>
+      list
+        .filter((item) => data.following.some((brand) => sameBrand(brand, item.brand)))
+        .sort((a, b) => a.age - b.age),
+    [list, data.following],
+  );
+  const rare = useMemo(
+    () => list.filter((item) => item.rarity >= 8).sort((a, b) => b.rarity - a.rarity),
+    [list],
+  );
   const selectedStyle = params.get("style") ?? "All";
   const toggleSave = (id: number) => {
     const item = allListings.find((row) => row.id === id);
@@ -731,7 +770,7 @@ export default function Forme() {
         restoreSettings={restoreSettings}
         restorePiece={restorePiece}
         sync={sync}
-        editReason={setReasonKey}
+        changeReason={changeReason}
         recoverHides={recoverHides}
         reset={() => open({ kind: "reset" })}
       />
@@ -739,6 +778,7 @@ export default function Forme() {
   else if (pathname === "/tools/learning")
     content = (
       <LearningDashboard
+        key={sync.account?.email ?? (sync.state === "off" ? "local" : "pending")}
         settings={data}
         identity={
           mode === "live" ? (sync.account?.email ?? (sync.state === "off" ? "local" : null)) : null
@@ -767,7 +807,7 @@ export default function Forme() {
         genderHidden={genderHidden}
         previewDigest={params.get("preview") === "digest"}
         update={update}
-        editReason={setReasonKey}
+        changeReason={changeReason}
       />
     );
   else if (activeItem)
@@ -938,17 +978,6 @@ export default function Forme() {
             {storageError}
           </div>
         )}
-        {mode === "live" && (learning.pending > 0 || learning.error) && (
-          <p className="small notice" role="status">
-            {learning.pending > 0
-              ? `Feedback kept on this device · ${learning.pending} pending.`
-              : "Learning sync is unavailable."}
-            {learning.error
-              ? " Learning sync will retry when connected."
-              : " Waiting for learning sync."}{" "}
-            <Link href="/tools/learning">Learning details</Link>
-          </p>
-        )}
         {mode === "demo" && (
           <div className="demo-indicator" role="status">
             Demo · illustrative listings <Link href="/tools">Change source</Link>
@@ -1068,6 +1097,9 @@ export default function Forme() {
         />
       )}
       <div className="toast-stack">
+        {mode === "live" && (
+          <LearningSyncNotice pending={learning.pending} error={learning.error} />
+        )}
         {feedbackUndo && (
           <UndoToast
             key={

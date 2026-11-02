@@ -19,7 +19,7 @@ export default function ToolsPage({
   savedListings,
   restoreSettings,
   restorePiece,
-  editReason,
+  changeReason,
   reloadListings,
   switchMode,
   snapshot,
@@ -34,7 +34,7 @@ export default function ToolsPage({
   savedListings: Listing[];
   restoreSettings: (backup: Backup) => void;
   restorePiece: (key: string) => void;
-  editReason?: (key: string) => void;
+  changeReason?: (key: string, reason: import("@/lib/use-learning").DislikeReason) => void;
   reloadListings: () => Promise<void>;
   switchMode: (mode: "live" | "demo") => void;
   snapshot: ListingSnapshot | null;
@@ -113,7 +113,7 @@ export default function ToolsPage({
             source={allListings}
             settings={data}
             restore={restorePiece}
-            editReason={editReason}
+            changeReason={changeReason}
           />
         </div>
       </details>

@@ -364,6 +364,24 @@ test("learning API rejects foreign origins and malformed events without training
   ).toBe(400);
 });
 
+test('a slow or failed history read never masquerades as zero and polling does not overlap', async ({page}) => {
+ let requests=0, release:()=>void=()=>{}, recovered=false;
+ const held=new Promise<void>(resolve=>{release=resolve});
+ await page.clock.install();
+ await page.route('**/api/learning',async route=>{
+  if(route.request().method()!=='GET')return route.fulfill({json:{ack:[]}});
+  requests++;await held;
+  if(!recovered)return route.fulfill({status:503,json:{error:'Fixture history unavailable'}});
+  return route.fulfill({json:{events:128,canTrain:false,job:null,selection:{revision:0,selected:null,history:[]},reports:[],runs:[]}});
+ });
+ await page.goto('/tools/learning');await expect(page.getByText('Loading feedback history…',{exact:true})).toBeVisible();
+ await expect(page.getByText(/^0 feedback events/)).toHaveCount(0);
+ await page.clock.runFor(15000);expect(requests).toBe(1);
+ release();await expect(page.getByText('Feedback history couldn’t be loaded. Your feedback has not been counted as zero.',{exact:true})).toBeVisible();
+ recovered=true;await page.getByRole('button',{name:'Retry history',exact:true}).click();
+ await expect(page.getByText('128 feedback events recorded in this learning history.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Feedback history couldn’t be loaded. Your feedback has not been counted as zero.',{exact:true})).toHaveCount(0);
+});
 // ---------------------------------------------------------------------------------------------- one ranking per visit
 // A vote used to re-run the ranking request, uploading a fresh ~2 MB catalogue each time; at the owner's voting pace the history
 // slowed until answers arrived later than votes, and the answers were thrown away. One request per visit to a feed is enough.

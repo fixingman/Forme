@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {REASONS,REASON_LABELS,REASON_GROUPS,ATTRIBUTE_REASONS,isReason} from '../../lib/domain/dislike-reasons.mjs';
 import * as learning from '../../lib/domain/learning.mjs';
+import {developmentEvidence} from '../../lib/domain/learning-analysis.mjs';
 import {tasteProfile,normalizeTasteFeedback,feedbackSnapshot} from '../../lib/domain/taste-profile.mjs';
 import {recommendListings} from '../../lib/domain/recommendations.mjs';
 import {hiddenEntries,searchHidden} from '../../lib/domain/hidden-pieces.mjs';
@@ -14,12 +15,12 @@ const hidden=(item,reason)=>({...feedbackSnapshot(item),reason});
 const withHidden=(items,reason)=>({...base,dismissed:items.map(i=>i.sourceKey),tasteFeedback:items.map(i=>hidden(i,reason))});
 
 test('the reasons are one ordered list with a plain label each; taste reasons come first',()=>{
- assert.deepEqual(REASONS,['style','material','color','price','data','unneeded','similar','unspecified']);
+ assert.deepEqual(REASONS,['style','material','color','fit','price','data','unneeded','similar','unspecified']);
  assert.deepEqual(Object.keys(REASON_LABELS),REASONS);
  assert.equal(REASON_LABELS.material,'Not the right material');assert.equal(REASON_LABELS.color,'Not the right colour');assert.equal(REASON_LABELS.unneeded,'Not needed');assert.equal(REASON_LABELS.similar,'Already have something similar');
  assert.ok(isReason('material')&&isReason('color')&&!isReason('colour')&&!isReason('brand')&&!isReason(undefined));
  assert.equal(learning.REASONS,REASONS,'the learning module re-exports the same list');assert.equal(learning.REASON_LABELS,REASON_LABELS);
- assert.deepEqual(ATTRIBUTE_REASONS,{material:'material:',color:'color:'});
+ assert.deepEqual(ATTRIBUTE_REASONS,{material:'material:',color:'color:',fit:'fit:'});
 });
 test('stored rows keep the new reasons and still drop unknown ones, as before',()=>{
  const row=piece(1,'A','Wool jacket');
@@ -67,7 +68,7 @@ test('after two material complaints, wool ranks lower than other materials from 
 });
 test('a single complaint is not enough to demote a whole material or colour',()=>{
  const pool=[piece(31,'Lemaire','Wool cardigan'),piece(32,'Lemaire','Black coat')];
- for(const reason of ['material','color']){
+ for(const reason of ['material','color','fit']){
   const calm=recommendListings(pool,{...base},{now,signals:[...pool,woolA]}),told=recommendListings(pool,{...withHidden([woolA],reason),following:['Our Legacy']},{now,signals:[...pool,woolA]});
   assert.ok(calm.length===2&&told.length===2,'both runs see the same candidates');
   for(const id of [31,32])assert.equal(scoreOf(told,id),scoreOf(calm,id),`${reason} #${id}`);
@@ -82,7 +83,7 @@ test('colour complaints demote that colour only',()=>{
 // ---------------------------------------------------------------------------------- learning pipeline
 test('the new reasons are retained evidence, never training labels, and the evidence counters know them',()=>{
  const key='vinted:51',event=(action,extra={})=>({id:crypto.randomUUID(),key,action,channel:'preview',...extra});
- for(const reason of ['material','color']){
+ for(const reason of ['material','color','fit']){
   const dismiss=event('dismiss',{reason});
   const report=learning.evaluateEvidence({events:[{data:dismiss,ordinal:1}],exposures:[],runs:[],channel:'preview'});
   assert.equal(report.counts[reason],1,reason);assert.equal(report.counts.style,0);assert.equal(Number.isNaN(report.counts.material+report.counts.color),false,'no NaN counters');
@@ -112,7 +113,7 @@ test('hidden pieces can be found by the reason given, in words',()=>{
 // ---------------------------------------------------------------------------------- the dialog's groups
 test('the dialog groups every reason once, in three short questions, with "No reason" left out as a choice',()=>{
  assert.deepEqual(REASON_GROUPS.map(g=>g.label),['The piece','The listing','Your needs']);
- assert.deepEqual(REASON_GROUPS.map(g=>g.reasons),[['style','material','color'],['price','data'],['unneeded','similar']]);
+ assert.deepEqual(REASON_GROUPS.map(g=>g.reasons),[['style','material','color','fit'],['price','data'],['unneeded','similar']]);
  const shown=REASON_GROUPS.flatMap(g=>g.reasons);
  assert.deepEqual([...shown].sort(),REASONS.filter(r=>r!=='unspecified').sort(),'every real reason appears exactly once');
  assert.equal(new Set(shown).size,shown.length);assert.equal(new Set(REASON_GROUPS.map(g=>g.id)).size,REASON_GROUPS.length);
@@ -141,4 +142,24 @@ test('the hidden list offers the new reasons as filters, labelled and ordered, a
  const entries=hiddenEntries({keys:rows.map(r=>r.key),source:[],remembered:rows});
  assert.deepEqual(entries.map(e=>e.reason),[undefined,'color','similar','similar','unneeded']);
  assert.deepEqual(searchHidden(entries,'already have something similar').map(e=>e.key),['vinted:3','vinted:2']);assert.deepEqual(searchHidden(entries,'not needed').map(e=>e.key),['vinted:1']);
+});
+
+
+test('fit feedback demotes only the stated cut after two hides; it never blames a brand, size or general style',()=>{
+ const a=piece(201,'Lemaire','Black wool relaxed jacket'),b=piece(202,'Lemaire','Boxy cotton shirt');
+ const pool=[piece(203,'Lemaire','Relaxed cotton shirt'),piece(204,'Lemaire','Straight cotton shirt'),piece(205,'Auralee','Relaxed cotton shirt')];
+ const profile=tasteProfile(withHidden([a,b],'fit'),[...pool,a,b]);
+ assert.deepEqual([...profile.negativeTraits],[['fit:relaxed',2]]);assert.equal(profile.negativeBrands.size,0);
+ const options={now,signals:[...pool,a,b]},plain=recommendListings(pool,base,options),changed=recommendListings(pool,withHidden([a,b],'fit'),options);
+ assert.ok(scoreOf(changed,203)<scoreOf(plain,203));assert.ok(scoreOf(changed,205)<scoreOf(plain,205));assert.equal(scoreOf(changed,204),scoreOf(plain,204));
+ const unknown=tasteProfile(withHidden([woolA,woolB],'fit'),[woolA,woolB]);assert.equal(unknown.negativeTraits.size,0,'no cut is guessed from the photograph or size');
+ const events=[{id:crypto.randomUUID(),key:a.sourceKey,action:'dismiss',channel:'shopping',reason:'fit',item:a,ordinal:1}];
+ assert.equal(learning.trainingExamples(events,'shopping').length,0,'fit is not a broad style-negative label');
+});
+
+test('fit remains a distinct motive in development evidence without becoming a style-negative label',()=>{
+ const event={id:crypto.randomUUID(),key:woolA.sourceKey,action:'dismiss',reason:'fit',channel:'shopping',item:woolA};
+ const evidence=developmentEvidence({events:[{ordinal:1,data:event}],exposures:[],runs:[{id:crypto.randomUUID(),data:{policy:learning.LABEL_POLICY,channel:'shopping',cutoff:1,engines:{},trainingDigests:{}}}],selection:{selected:null}},'shopping').payload.evidence;
+ assert.equal(evidence.find(row=>row.id==='D1').decisions,0);
+ const counts=evidence.find(row=>row.id==='D2').counts;assert.equal(counts.fit,1);assert.equal(counts.style,0);assert.equal(counts.unspecified,0);
 });

@@ -8,12 +8,12 @@ export default function FeedbackReview({
   source,
   settings,
   restore,
-  editReason,
+  changeReason,
 }: {
   source: Listing[];
   settings: Preferences;
   restore: (key: string) => void;
-  editReason?: (key: string) => void;
+  changeReason?: (key: string, reason: import("@/lib/use-learning").DislikeReason) => void;
 }) {
   const review = feedbackReview(source, settings) as {
     savedCount: number;
@@ -75,7 +75,7 @@ export default function FeedbackReview({
               }) as HiddenEntry[]
             }
             restore={restore}
-            editReason={editReason}
+            changeReason={changeReason}
           />
         </details>
       )}

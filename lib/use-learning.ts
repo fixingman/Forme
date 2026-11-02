@@ -17,6 +17,7 @@ export type DislikeReason =
   | "style"
   | "material"
   | "color"
+  | "fit"
   | "price"
   | "data"
   | "unneeded"
@@ -197,20 +198,40 @@ export function useLearning({
   const generation = useRef(0),
     seen = useRef(new Map<string, string>()),
     wasDiscover = useRef(false);
+  const lastSnapshot = useRef<{
+    identity: string;
+    contextKey: string;
+    fingerprint: string;
+  } | null>(null);
   const profile = useMemo(
     () => createBackup(settings, { mode: "live", collapsed: false }, savedListings),
     [settings, savedListings],
   );
-  const fingerprint = JSON.stringify([settings, savedListings, items]);
-  const contextKey = JSON.stringify([
-    settings.gender,
-    settings.sizing,
-    settings.following,
-    settings.excluded,
-    settings.styles,
-    settings.styleRules,
-    items,
-  ]);
+  const fingerprint = useMemo(
+    () => JSON.stringify([settings, savedListings, items]),
+    [settings, savedListings, items],
+  );
+  const contextKey = useMemo(
+    () =>
+      JSON.stringify([
+        settings.gender,
+        settings.sizing,
+        settings.following,
+        settings.excluded,
+        settings.styles,
+        settings.styleRules,
+        items,
+      ]),
+    [
+      settings.gender,
+      settings.sizing,
+      settings.following,
+      settings.excluded,
+      settings.styles,
+      settings.styleRules,
+      items,
+    ],
+  );
   const latest = useRef({ view });
   latest.current = { view };
   // One frozen ranking per visit to a feed. A vote changes your preferences but not the feed (the pieces, your filters and
@@ -222,6 +243,7 @@ export function useLearning({
     const clear = () => {
       setView(null);
       seen.current.clear();
+      lastSnapshot.current = null;
     };
     clear();
     window.addEventListener("forme-learning-selection", clear);
@@ -231,11 +253,22 @@ export function useLearning({
     const newVisit = discover && !wasDiscover.current;
     wasDiscover.current = discover;
     if (!identity || !discover || !items.length) return;
+    // The initial answer can announce a learned selection, changing `refresh`.
+    // It already covers these preferences: only a subsequent edit needs another request.
+    const previous = lastSnapshot.current;
+    if (
+      !newVisit &&
+      previous?.identity === identity &&
+      previous.contextKey === contextKey &&
+      previous.fingerprint === fingerprint
+    )
+      return;
     const version = ++generation.current;
     const timer = setTimeout(() => {
       void learningRequest({ action: "snapshot", profile, items, channel: "shopping" })
         .then((result) => {
           if (version === generation.current) {
+            lastSnapshot.current = { identity, contextKey, fingerprint };
             setView((previous) => {
               if (!newVisit && previous?.contextKey === contextKey) {
                 // Feedback must not split one review into incomparable one-vote pools.

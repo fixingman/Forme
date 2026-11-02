@@ -53,9 +53,12 @@ Grid feeds reveal 24 pieces at a time when the reader nears the bottom. They rev
 
 Keep revealed depth when pieces are hidden, saved, reordered or updated in the background. Returning from an item page restores the tab's remembered window and reading position. Route, style-query and global filter combinations have separate in-memory windows; a full reload starts fresh. No preference or listing payload is persisted by this UI cache.
 
+Discover keeps surviving cards in their active visit’s order with the same explanations after saves and reason changes. A saved piece leaves Discover immediately and remains in Saved items; unsaving makes it eligible again. Hidden or newly ineligible pieces disappear immediately; Undo returns a piece to its original slot. New eligible arrivals append. Opening an item and going Back retains this visit, even after saving on the item page. Navigating away to another section and returning to Discover starts a fresh ranking; deliberate engine, account or shopping-preference changes also start a new order. Normal feedback acknowledgements stay quiet; delayed/offline sync uses a notice outside the document flow, never a banner inserted above the feed.
+
 ## Feedback and shared states
 
 - Piece feedback says **Not for me**; brand feedback explicitly names the brand and explains its wider scope.
+- In Hidden pieces, the current reason (or **Add reason**) opens choices beside that piece. One choice saves and closes; Escape cancels and returns focus. If changing a reason removes the row from the current filter, return focus to the hidden-piece list. Phone choices use two columns and 44px targets. Reuse the shared reason groups for this editor and the optional Undo dialog.
 - Undo notifications last four seconds, show a progress line without numeric seconds, pause on hover/focus and keep Undo/dismiss available. Reduced motion hides animation.
 - Use the shared `Header`, `Empty` and `ListingSkeleton` patterns. Empty states explain the next useful action and never weaken filters automatically.
 - Recoverable read failures retain usable content and provide retry. Background read failures do not replace the last good collection.

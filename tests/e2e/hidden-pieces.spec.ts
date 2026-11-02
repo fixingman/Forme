@@ -141,10 +141,10 @@ test(`hidden pieces fit without overflow on ${name}, with 44px restore targets`,
 
 // ------------------------------------------------------------------ reasons
 const reasonOf=(page:Page,key:string)=>page.evaluate(k=>JSON.parse(localStorage.getItem('forme-v2')!).tasteFeedback.find((row:{key:string})=>row.key===k)?.reason,key);
-const dialog=(page:Page)=>page.getByRole('dialog',{name:'Why wasn’t this for you?'});
-const labels=['Not my style','Not the right material','Not the right colour','Too expensive','Incorrect size/category','Not needed','Already have something similar'];
+const dialog=(page:Page)=>page.locator('#hidden-pieces .hidden-reason-editor');
+const labels=['Not my style','Not the right material','Not the right colour','Doesn’t look like the right fit','Too expensive','Incorrect size/category','Not needed','Already have something similar'];
 const open=async(page:Page)=>{await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await expect(dialog(page)).toBeVisible();};
-test('the reason dialog groups its seven choices into three short questions, with nothing chosen for a plain hide',async({page})=>{
+test('the inline reason editor groups its eight choices into three short questions, with nothing chosen for a plain hide',async({page})=>{
  await page.goto('/settings');
  await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();
  await expect(dialog(page)).toBeVisible();
@@ -152,13 +152,13 @@ test('the reason dialog groups its seven choices into three short questions, wit
  // three named groups, each holding its own choices, instead of one long list
  const groups=dialog(page).getByRole('group');await expect(groups).toHaveCount(3);
  await expect(groups.nth(0)).toHaveAccessibleName('The piece');await expect(groups.nth(1)).toHaveAccessibleName('The listing');await expect(groups.nth(2)).toHaveAccessibleName('Your needs');
- expect(await groups.nth(0).getByRole('button').allInnerTexts()).toEqual(['Not my style','Not the right material','Not the right colour']);
+ expect(await groups.nth(0).getByRole('button').allInnerTexts()).toEqual(['Not my style','Not the right material','Not the right colour','Doesn’t look like the right fit']);
  expect(await groups.nth(1).getByRole('button').allInnerTexts()).toEqual(['Too expensive','Incorrect size/category']);
  expect(await groups.nth(2).getByRole('button').allInnerTexts()).toEqual(['Not needed','Already have something similar']);
  // "No reason" is what a hide already is, so it is not offered as a choice; nothing is selected and there is nothing to remove
  await expect(dialog(page).getByRole('button',{name:'No reason',exact:true})).toHaveCount(0);await expect(dialog(page).getByRole('button',{name:'Remove reason',exact:true})).toHaveCount(0);
  await expect(dialog(page).locator('.reason-options button[aria-pressed="true"]')).toHaveCount(0);await expect(dialog(page).locator('.reason-options .chip.active')).toHaveCount(0);
- await expect(dialog(page)).toContainText('Only style, material and colour tune your picks.');
+ await expect(dialog(page)).toContainText('Style, material, colour and fit tune your picks. Other reasons add context.');
  await dialog(page).getByRole('button',{name:'Not now',exact:true}).click();await expect(dialog(page)).toHaveCount(0);expect(await reasonOf(page,'vinted:96001')).toBeUndefined();
 });
 test('choosing a colour reason shows it on the row, survives a reload, and can be found by search',async({page})=>{
@@ -204,15 +204,15 @@ test('search finds hidden pieces by the reason in words',async({page})=>{
 });
 test('the new reasons travel in a backup; an unknown reason is refused whole and changes nothing',async({page})=>{
  await page.goto('/settings');
- await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await dialog(page).getByRole('button',{name:'Not the right colour',exact:true}).click();
+ await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await dialog(page).getByRole('button',{name:'Doesn’t look like the right fit',exact:true}).click();
  const waiting=page.waitForEvent('download');await page.getByRole('button',{name:'Download settings backup'}).click();
  const backup=JSON.parse(await readFile((await (await waiting).path())!,'utf8'));
- expect(backup.settings.tasteFeedback.find((r:{key:string})=>r.key==='vinted:96001').reason).toBe('color');
+ expect(backup.settings.tasteFeedback.find((r:{key:string})=>r.key==='vinted:96001').reason).toBe('fit');
  // a clean restore keeps it
  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('forme-v2')!);s.tasteFeedback=[];localStorage.setItem('forme-v2',JSON.stringify(s));});await page.reload();
  const okPath=test.info().outputPath('ok.json');await writeFile(okPath,JSON.stringify(backup));
  await page.getByLabel('Restore settings from file',{exact:true}).setInputFiles(okPath);await page.getByRole('button',{name:'Restore this backup'}).click();await page.reload();
- expect(await reasonOf(page,'vinted:96001')).toBe('color');await expect(row(page,'Comme des Garçons').locator('.hidden-piece-reason')).toHaveText('Not the right colour');
+ expect(await reasonOf(page,'vinted:96001')).toBe('fit');await expect(row(page,'Comme des Garçons').locator('.hidden-piece-reason')).toHaveText('Doesn’t look like the right fit');
  // an invented reason is refused before anything changes
  backup.settings.tasteFeedback.find((r:{key:string})=>r.key==='vinted:96001').reason='colour';
  const badPath=test.info().outputPath('bad.json');await writeFile(badPath,JSON.stringify(backup));const before=await page.evaluate(()=>localStorage.getItem('forme-v2'));
@@ -220,12 +220,12 @@ test('the new reasons travel in a backup; an unknown reason is refused whole and
  await expect(page.getByRole('button',{name:'Restore this backup'})).toHaveCount(0);await expect(page.getByRole('status').filter({hasText:/invalid feedback|nothing was changed/i}).first()).toBeVisible();
  expect(await page.evaluate(()=>localStorage.getItem('forme-v2'))).toBe(before);
 });
-test('the seven reasons fit on a phone, each a comfortable tap target',async({page})=>{
+test('the eight reasons fit on a phone, each a comfortable tap target',async({page})=>{
  await page.setViewportSize({width:340,height:700});await page.goto('/settings');
  await row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true}).click();await expect(dialog(page)).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- for(const b of await dialog(page).locator('.reason-options button').all()){const box=(await b.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(40);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(340);}
- const dlg=(await dialog(page).boundingBox())!;expect(dlg.y).toBeGreaterThanOrEqual(0);expect(dlg.y+dlg.height).toBeLessThanOrEqual(700+1);
+ for(const b of await dialog(page).locator('.reason-options button').all()){await b.scrollIntoViewIfNeeded();const box=(await b.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(40);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(340);}
+ const dlg=(await dialog(page).boundingBox())!;expect(dlg.width).toBeLessThanOrEqual(340);
 });
 
 // ------------------------------------------------------- hidden date, filter, paging
@@ -347,19 +347,43 @@ test('"Remove reason" appears only while a reason is set, and "Not now" always l
 test('the reason filter shows its selected choice as selected, and the new reasons are filters too',async({page})=>{
  await page.goto('/settings');await expect(rows(page).first()).toBeVisible();
  await seed(page,[{key:'vinted:97001',reason:'unneeded'},{key:'vinted:97002',reason:'similar'},{key:'vinted:97003',reason:'similar'},{key:'vinted:97004',reason:'color'},{key:'vinted:97005'},{key:'vinted:97006'}]);await page.reload();
- const group=page.getByRole('group',{name:'Filter by reason'});
+ const group=page.getByRole('group',{name:'Filter by reason'});await expect(group).toBeVisible();
  expect((await group.getByRole('button').allInnerTexts()).map(t=>t.replace(/\s+/g,' ').trim())).toEqual(['All 10','Not the right colour 1','Not needed 1','Already have something similar 2','No reason 6']);
  const all=group.getByRole('button',{name:/^All/});await expect(all).toHaveClass(/\bactive\b/);
  await group.getByRole('button',{name:/^Already have something similar/}).click();
  await expect(group.getByRole('button',{name:/^Already have something similar/})).toHaveClass(/\bactive\b/);await expect(all).not.toHaveClass(/\bactive\b/);
  await expect(rows(page)).toHaveCount(2);await expect(rows(page).locator('.hidden-piece-reason')).toHaveText(['Already have something similar','Already have something similar']);
 });
-test('the grouped dialog stays short: three groups, no scrolling on a small phone, and the footer actions fit',async({page})=>{
+test('inline reasons use paired choices on a small phone and the footer actions stay reachable',async({page})=>{
  await page.setViewportSize({width:375,height:667});await page.goto('/settings');await open(page);
  await dialog(page).getByRole('button',{name:'Not needed',exact:true}).click();await open(page);
- expect(await dialog(page).evaluate(el=>el.scrollHeight<=el.clientHeight+1),'the dialog needs no inner scrolling at 375x667').toBe(true);
- const box=(await dialog(page).boundingBox())!;expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(667);
- for(const name of ['Not now','Remove reason']){const b=(await dialog(page).getByRole('button',{name,exact:true}).boundingBox())!;expect(b.height).toBeGreaterThanOrEqual(38);expect(b.x+b.width).toBeLessThanOrEqual(375);}
+ expect(await dialog(page).evaluate(el=>el.scrollHeight<=el.clientHeight+1),'the inline editor has no inner scrolling at 375x667').toBe(true);
+ const box=(await dialog(page).boundingBox())!;expect(box.width).toBeLessThanOrEqual(375);
+ for(const name of ['Not now','Remove reason']){await dialog(page).getByRole('button',{name,exact:true}).scrollIntoViewIfNeeded();const b=(await dialog(page).getByRole('button',{name,exact:true}).boundingBox())!;expect(b.height).toBeGreaterThanOrEqual(38);expect(b.x+b.width).toBeLessThanOrEqual(375);}
  // each group's chips share rows rather than one per line: far fewer rows than reasons
  const tops=new Set(await dialog(page).locator('.reason-options button').evaluateAll(els=>els.map(el=>Math.round(el.getBoundingClientRect().top))));expect(tops.size).toBeLessThan(7);
+});
+
+
+test('fit can be added beside the piece, saved in one choice, and edited with the keyboard',async({page})=>{
+ await page.goto('/settings');await open(page);
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ const trigger=row(page,'Comme des Garçons').getByRole('button',{name:'Edit reason for Wool parachute jacket',exact:true});
+ await expect(trigger).toHaveAttribute('aria-expanded','true');
+ await dialog(page).getByRole('button',{name:'Doesn’t look like the right fit',exact:true}).click();
+ await expect(trigger).toBeFocused();await expect(trigger).toHaveAttribute('aria-expanded','false');
+ await expect(trigger).toContainText('Doesn’t look like the right fit');expect(await reasonOf(page,'vinted:96001')).toBe('fit');
+ await trigger.press('Enter');await dialog(page).getByRole('button',{name:'Not my style',exact:true}).focus();await page.keyboard.press('Escape');
+ await expect(dialog(page)).toHaveCount(0);await expect(trigger).toBeFocused();expect(await reasonOf(page,'vinted:96001')).toBe('fit');
+ await page.reload();await expect(row(page,'Comme des Garçons').locator('.hidden-piece-reason')).toHaveText('Doesn’t look like the right fit');
+});
+
+test('changing a filtered reason keeps keyboard focus in Hidden pieces when the row disappears',async({page})=>{
+ await page.goto('/settings');await seed(page,[{key:'vinted:97001',reason:'color'},{key:'vinted:97002',reason:'color'}]);await page.reload();
+ await page.getByRole('group',{name:'Filter by reason'}).getByRole('button',{name:/^Not the right colour/}).click();
+ const edited=rows(page).filter({hasText:'Knit 001'});await edited.getByRole('button',{name:/^Edit reason/}).click();
+ await dialog(page).getByRole('button',{name:'Doesn’t look like the right fit',exact:true}).click();
+ await expect(edited).toHaveCount(0);await expect(rows(page)).toHaveCount(1);
+ await expect(page.locator('#hidden-pieces').getByRole('list',{name:'Hidden pieces',exact:true})).toBeFocused();
+ expect(await reasonOf(page,'vinted:97001')).toBe('fit');
 });

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Preferences } from "@/lib/preferences";
 import { ENGINE_IDS, DISLIKE_MIN_HIDES, DISLIKE_MIN_DAYS } from "@/lib/domain/learning.mjs";
 import { sameBrand } from "@/lib/domain/brands.mjs";
@@ -141,12 +141,23 @@ export default function LearningDashboard({
     [busy, setBusy] = useState(false),
     [confirm, setConfirm] = useState<{ run: Run; engine: string } | null>(null),
     [deleting, setDeleting] = useState(false);
-  async function reload() {
-    try {
-      setStatus(await learningRequest());
-    } catch (e) {
-      setMessage((e as Error).message);
-    }
+  const [statusError, setStatusError] = useState("");
+  const statusRequest = useRef<Promise<void> | null>(null);
+  function reload(): Promise<void> {
+    if (statusRequest.current) return statusRequest.current;
+    const request = learningRequest()
+      .then((value) => {
+        setStatus(value);
+        setStatusError("");
+      })
+      .catch((error) => {
+        setStatusError(error.message);
+      })
+      .finally(() => {
+        statusRequest.current = null;
+      });
+    statusRequest.current = request;
+    return request;
   }
   useEffect(() => {
     void reload();
@@ -211,9 +222,13 @@ export default function LearningDashboard({
         <section className="panel learning-section">
           <h2>Live ranking</h2>
           <p className="learning-current-value">
-            {status?.selection.selected
-              ? `${names[status.selection.selected.engine]} · selected version ${status.selection.selected.runId.slice(0, 8)}`
-              : "Current remains selected."}
+            {!status
+              ? statusError
+                ? "Ranking status unavailable."
+                : "Loading ranking status…"
+              : status.selection.selected
+                ? `${names[status.selection.selected.engine]} · selected version ${status.selection.selected.runId.slice(0, 8)}`
+                : "Current remains selected."}
           </p>
           <p className="small">
             Switching to a candidate needs evidence and your approval. Your shopping filters still
@@ -232,9 +247,25 @@ export default function LearningDashboard({
       </div>
       <section className="panel learning-section">
         <h2>Recommendation quality</h2>
-        <p>
-          {status?.events ?? 0} feedback events recorded. New votes evaluate earlier rankings before
-          they train the next version.
+        <p aria-live="polite">
+          {status
+            ? `${status.events} feedback events recorded in this learning history.`
+            : statusError
+              ? "Feedback history couldn’t be loaded. Your feedback has not been counted as zero."
+              : "Loading feedback history…"}
+        </p>
+        {statusError && (
+          <p className="notice" role="status">
+            {statusError} {status && "The count above is from the last successful check. "}
+            <button className="textbutton" onClick={() => void reload()}>
+              Retry history
+            </button>
+          </p>
+        )}
+        <p className="small">
+          {settings.saved.length} saved pieces · {settings.dismissed.length} hidden pieces in your
+          preferences. These remain separate from evaluation history. New feedback evaluates earlier
+          rankings before training the next version.
         </p>
         <details className="learning-disclosure">
           <summary>When can I change the ranking?</summary>
@@ -261,10 +292,10 @@ export default function LearningDashboard({
                   <p className="small">
                     {report.counts.positive} positive · {report.counts.style} style dislikes ·{" "}
                     {report.counts.material} material · {report.counts.color} colour ·{" "}
-                    {report.counts.price} price · {report.counts.data} data reports ·{" "}
-                    {report.counts.unneeded ?? 0} not needed · {report.counts.similar ?? 0} similar
-                    · {report.counts.unknown} unknown motives · {report.counts.unscored} without
-                    prior predictions
+                    {report.counts.fit ?? 0} fit · {report.counts.price} price ·{" "}
+                    {report.counts.data} data reports · {report.counts.unneeded ?? 0} not needed ·{" "}
+                    {report.counts.similar ?? 0} similar · {report.counts.unknown} unknown motives ·{" "}
+                    {report.counts.unscored} without prior predictions
                   </p>
                 </div>
               </details>

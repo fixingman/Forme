@@ -17,7 +17,7 @@ export default function SettingsPage({
   savedListings,
   restoreSettings,
   restorePiece,
-  editReason,
+  changeReason,
   recoverHides,
   sync,
   reset,
@@ -29,7 +29,7 @@ export default function SettingsPage({
   savedListings: Listing[];
   restoreSettings: (backup: Backup) => void;
   restorePiece: (key: string) => void;
-  editReason?: (key: string) => void;
+  changeReason?: (key: string, reason: import("@/lib/use-learning").DislikeReason) => void;
   recoverHides?: (settings: Preferences) => void;
   sync: ReturnType<typeof useProfileSync>;
   reset: () => void;
@@ -63,7 +63,7 @@ export default function SettingsPage({
         source={allListings}
         remembered={data.tasteFeedback}
         restore={restorePiece}
-        editReason={editReason}
+        changeReason={changeReason}
         recover={recoverHides}
       />
       <section className="panel">

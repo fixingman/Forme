@@ -6,7 +6,7 @@ import type { DislikeReason } from "@/lib/use-learning";
 
 /**
  * The optional "why" after Not for me. The reasons are grouped into three short questions (the piece, the listing, your needs)
- * and shown as chips, the app's selection control, so eight choices read at a glance. Choosing one saves it and closes; "No
+ * and shown as chips, the app's selection control, so the choices read at a glance. Choosing one saves it and closes; "No
  * reason" is not a choice but what a hide already is, so the dialog only offers to return to it when a reason is set.
  */
 export default function DislikeReasonDialog({
@@ -18,11 +18,36 @@ export default function DislikeReasonDialog({
   change: (reason: DislikeReason) => void;
   close: () => void;
 }) {
-  const id = useId(),
-    chosen = reason && reason !== "unspecified" ? reason : undefined;
+  const chosen = reason && reason !== "unspecified" ? reason : undefined;
   return (
     <Dialog title="Why wasn’t this for you?" close={close} className="reason-dialog">
       <p>Optional. The piece is already hidden.</p>
+      <ReasonOptions reason={reason} change={change} />
+      <div className="reason-footer">
+        <button className="textbutton" onClick={close}>
+          Not now
+        </button>
+        {chosen && (
+          <button className="textbutton" onClick={() => change("unspecified")}>
+            Remove reason
+          </button>
+        )}
+      </div>
+    </Dialog>
+  );
+}
+
+export function ReasonOptions({
+  reason,
+  change,
+}: {
+  reason?: string;
+  change: (reason: DislikeReason) => void;
+}) {
+  const id = useId(),
+    chosen = reason && reason !== "unspecified" ? reason : undefined;
+  return (
+    <>
       <div className="reason-groups">
         {REASON_GROUPS.map((group: { id: string; label: string; reasons: string[] }) => (
           <div
@@ -49,17 +74,9 @@ export default function DislikeReasonDialog({
           </div>
         ))}
       </div>
-      <p className="small">Only style, material and colour tune your picks.</p>
-      <div className="reason-footer">
-        <button className="textbutton" onClick={close}>
-          Not now
-        </button>
-        {chosen && (
-          <button className="textbutton" onClick={() => change("unspecified")}>
-            Remove reason
-          </button>
-        )}
-      </div>
-    </Dialog>
+      <p className="small">
+        Style, material, colour and fit tune your picks. Other reasons add context.
+      </p>
+    </>
   );
 }

@@ -10,13 +10,13 @@ Implemented in the working tree, 25 October 2026. Open **Collection tools → Le
 |---|---|
 | Save / private Would save | Positive, while active and not hidden |
 | Not my style | Explicit negative |
-| Not the right material / Not the right colour | Explicit but narrow: only the `material:` or `color:` trait of that piece counts as a dislike (and needs the usual two hides to affect ranking). No brand penalty, and not a taste-negative training label |
+| Not the right material / Not the right colour / Doesn’t look like the right fit | Explicit but narrow: only the `material:`, `color:` or `fit:` trait of that piece counts as a dislike (and needs the usual two hides to affect ranking). No brand penalty, and not a taste-negative training label |
 | Too expensive | Retained price/context evidence, excluded from taste-negative labels |
 | Not needed / Already have something similar | Retained owner context about need, not about the piece. Excluded from taste-negative labels and from ranking: owning something similar says nothing against the piece, the brand or the style |
 | Incorrect size/category | Retained owner report, excluded from taste-negative labels; provider facts stay intact |
 | No reason | Unknown motive, excluded from taste-negative labels |
 
-The new `reason-aware-v1` candidates remove price features. A learned affordability adjustment is deferred until there is supporting evidence. Current preserves the compatibility policy for older reasonless hides; new unspecified/price/data hides do not add a broad taste penalty. Brand exclusion remains an explicit hard preference.
+The new `reason-aware-v1` candidates remove price features. A learned affordability adjustment is deferred until there is supporting evidence. Current preserves the compatibility policy for older reasonless hides; new unspecified/price/data hides do not add a broad taste penalty. Brand exclusion remains an explicit hard preference. Fit feedback only uses cut words already present in listing text (relaxed/boxy, cropped, straight); it does not infer body fit from a photo or size, edit size filters, or penalise the brand. Unknown cuts stay unknown.
 
 ## Delivery and privacy
 

@@ -3141,6 +3141,44 @@ small,
   align-items: flex-start;
   gap: 2px;
 }
+.hidden-reason-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+.hidden-reason-trigger:hover,
+.hidden-reason-trigger[aria-expanded="true"] {
+  color: var(--ink);
+}
+.hidden-reason-trigger .lucide {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.hidden-reason-trigger[aria-expanded="true"] .lucide {
+  transform: rotate(180deg);
+}
+.hidden-reason-editor {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--soft);
+}
+.hidden-reason-editor .reason-groups {
+  margin-top: 0;
+}
+.hidden-reason-editor .reason-options .chip {
+  min-height: 44px;
+  text-align: left;
+}
 .hidden-piece-name {
   display: flex;
   min-width: 0;
@@ -3708,6 +3746,28 @@ a.hidden-piece-name:hover strong {
 }
 .publish-facts dd {
   margin: 0;
+}
+
+/* Sync acknowledgements must never insert/remove space above a feed in progress. */
+.learning-sync-notice {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.learning-sync-notice a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 720px) {
+  .hidden-reason-editor .reason-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hidden-reason-editor .reason-options .chip {
+    justify-content: flex-start;
+    padding: 8px 10px;
+    white-space: normal;
+  }
 }
 .uncounted-note {
   margin: var(--space-3) 0 var(--space-4);
