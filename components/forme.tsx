@@ -24,6 +24,8 @@ import FeedFreshness from "./feed-freshness";
 import { useListingUpdates } from "@/lib/use-listing-updates";
 import { feedbackSnapshot } from "@/lib/domain/taste-profile.mjs";
 import { mergeHides } from "@/lib/domain/profile-merge.mjs";
+import { splitSaved } from "@/lib/domain/saved-split.mjs";
+import SavedUnavailable from "./saved-unavailable";
 import LearningSyncNotice from "./learning-sync-notice";
 import UndoToast from "./undo-toast";
 import DislikeReasonDialog from "./dislike-reason";
@@ -497,6 +499,25 @@ export default function Forme() {
         : [...previous.saved, id],
     }));
   };
+  // Removes several saved pieces at once (the "No longer available" group). Each one is recorded as an unsave, exactly as the heart
+  // does; this is one update so the pieces cannot overwrite each other's change.
+  function removeSaved(ids: number[]) {
+    const gone = new Set(ids.filter((id) => data.saved.includes(id)));
+    if (!gone.size) return;
+    for (const id of gone) {
+      const item = allListings.find((row) => row.id === id);
+      if (item) learning.record(listingKey(item), "unsave", item);
+    }
+    const next = savedListings.filter((row) => !gone.has(row.id));
+    setSavedListings(next);
+    try {
+      localStorage.setItem("forme-saved-listings", JSON.stringify(next));
+    } catch {
+      setStorageError("The saved listings could not be stored in this browser.");
+    }
+    setData((previous) => ({ ...previous, saved: previous.saved.filter((id) => !gone.has(id)) }));
+    setToast(`Removed ${gone.size} ${gone.size === 1 ? "piece" : "pieces"} from Saved.`);
+  }
   const brandState = (brand: string) =>
     data.excluded.some((value) => sameBrand(value, brand))
       ? "Excluded"
@@ -621,18 +642,26 @@ export default function Forme() {
       </>
     );
   else if (pathname === "/saved") {
-    const saved = visibleListings(data, allListings).filter((item) => data.saved.includes(item.id));
+    const everySaved = visibleListings(data, allListings).filter((item) =>
+        data.saved.includes(item.id),
+      ),
+      { available: saved, gone } = splitSaved(everySaved);
     content = (
       <>
         <Header title="Saved Items" description="Keep the pieces you want to come back to." />
         <div className="feed-meta">
           {saved.length} saved {saved.length === 1 ? "piece" : "pieces"}
-          {data.saved.length > saved.length
-            ? ` · ${data.saved.length - saved.length} hidden or outside this collection`
+          {gone.length ? ` · ${gone.length} no longer available` : ""}
+          {data.saved.length > everySaved.length
+            ? ` · ${data.saved.length - everySaved.length} hidden or outside this collection`
             : ""}
         </div>
         {saved.length ? (
           <Grid values={saved} />
+        ) : gone.length ? (
+          <p className="small section-note">
+            Every saved piece you can see is no longer available. They are listed below.
+          </p>
         ) : (
           <Empty
             title={
@@ -651,6 +680,7 @@ export default function Forme() {
               : "Tap the heart on any piece to save it here."}
           </Empty>
         )}
+        <SavedUnavailable items={gone} remove={removeSaved} />
       </>
     );
   } else if (pathname === "/drops") {
